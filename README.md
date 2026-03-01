@@ -1,101 +1,99 @@
-🍃 Koperasi Digital v2.0
+# 🍃 Koperasi Digital v2.0
 
 Sistem manajemen koperasi modern berbasis web untuk mengelola data anggota, pinjaman, angsuran, dan manajemen pengguna secara real-time. Dibangun dengan stack teknologi terbaru untuk performa tinggi dan antarmuka yang intuitif.
-🚀 Tech Stack
 
-    Backend: Laravel 11+ (PHP 8.2+)
+---
 
-    Frontend: Vue.js 3 (Composition API)
+## 🚀 Tech Stack
 
-    Inertia.js: Adhesif antara Laravel & Vue (Single Page Application)
+- **Backend:** Laravel 11+ (PHP 8.2+)
+- **Frontend:** Vue.js 3 (Composition API)
+- **Inertia.js:** Adhesif antara Laravel & Vue (Single Page Application)
+- **Styling:** Tailwind CSS
+- **Database:** MySQL / SQLite (Development)
 
-    Styling: Tailwind CSS
+---
 
-    Database: MySQL / SQLite (Development)
-
-🛠 Instalasi
+## 🛠 Instalasi
 
 Ikuti langkah-langkah berikut untuk menjalankan proyek di lingkungan lokal Anda:
-1. Clone Repositori
-Bash
 
-git clone https://github.com/username/koperasi-digital.git
+### 1. Clone Repositori
+```bash
+git clone [https://github.com/username/koperasi-digital.git](https://github.com/username/koperasi-digital.git)
 cd koperasi-digital
+```
 
 2. Instal Dependensi Backend (PHP)
-Bash
-
+```Bash
 composer install
+```
 
 3. Instal Dependensi Frontend (Node.js)
-Bash
-
+```Bash
 npm install
+```
 
 4. Konfigurasi Environment
-
 Salin file .env.example menjadi .env:
-Bash
-
+```Bash
 cp .env.example .env
-
+```
 ⚙️ Konfigurasi Utama
 
 Buka file .env dan sesuaikan bagian berikut:
 1. Database (Pilih salah satu)
 
 Jika menggunakan MySQL:
-Code snippet
-
+```
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=nama_db_koperasi
 DB_USERNAME=root
 DB_PASSWORD=
-
+```
 Jika menggunakan SQLite (Development):
-Code snippet
-
+```
 DB_CONNECTION=sqlite
 # Kosongkan bagian DB_HOST, DB_PORT, dll untuk SQLite
+```
 
 2. App Key
 
 Generate kunci aplikasi untuk keamanan enkripsi:
-Bash
-
+```Bash
 php artisan key:generate
+```
 
 3. Migrasi & Seed Data
-
 Jalankan migrasi tabel dan isi data awal (User Admin default):
-Bash
-
+```Bash
 php artisan migrate --seed
+```
 
 🏃‍♂️ Menjalankan Aplikasi
 
 Anda perlu menjalankan dua terminal secara bersamaan:
 
 Terminal 1: Server Laravel
-Bash
-
+```Bash
 php artisan serve
+```
 
 Terminal 2: Vite (Frontend Compilation)
-Bash
-
+```Bash
 npm run dev
-
+```
 Akses aplikasi di browser melalui: http://127.0.0.1:8000
+
 🔑 Akun Default (Seeder)
 
 Jika Anda menjalankan php artisan db:seed, gunakan akun berikut untuk login pertama kali:
 
     Email: admin@koperasi.com
 
-    Password: password
+    Password: Password5us4h
 
 📂 Struktur Penting Proyek
 
@@ -113,5 +111,6 @@ Jika Anda menjalankan php artisan db:seed, gunakan akun berikut untuk login pert
 
     Keamanan: Pastikan selalu menjalankan php artisan config:cache saat melakukan perubahan pada .env di lingkungan produksi.
 
-Kontribusi & Support
+🤝 Kontribusi & Support
+
 Jika menemukan bug atau ingin menambahkan fitur, silakan buat Pull Request atau hubungi tim pengembang.
