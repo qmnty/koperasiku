@@ -106,8 +106,7 @@ $webdir/public
 Jika Anda menjalankan php artisan db:seed, gunakan akun berikut untuk login pertama kali:
 
     Email: admin@koperasi.com
-
-    Password: Password5us4h
+    Password: $Password5Us4h#
 
 📂 Struktur Penting Proyek
 
