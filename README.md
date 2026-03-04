@@ -72,7 +72,8 @@ Jalankan migrasi tabel dan isi data awal (User Admin default):
 php artisan migrate --seed
 ```
 
-🏃‍♂️ Menjalankan Aplikasi
+---
+## 🏃‍♂️ Menjalankan Aplikasi Development Environment
 
 Anda perlu menjalankan dua terminal secara bersamaan:
 
@@ -86,6 +87,19 @@ Terminal 2: Vite (Frontend Compilation)
 npm run dev
 ```
 Akses aplikasi di browser melalui: http://127.0.0.1:8000
+
+---
+## Menjalankan Aplikasi Production Environment
+Build frontend dengan:
+```Bash
+npm run build
+```
+
+Lalu arahkan konfigurasi root_dir web server ke folder
+```
+$webdir/public
+```
+---
 
 🔑 Akun Default (Seeder)
 
