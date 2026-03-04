@@ -22,12 +22,14 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        // 1. Validasi Input
+        $userId = $request->id;
+        $isEdit = !empty($userId);
+
         $validator = Validator::make($request->all(), [
             'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6',
-            // 'role'     => 'required|in:admin,manager,staff',
+            'email'    => 'required|email|unique:users,email,' . ($userId ?? 'NULL'),
+            'password' => $isEdit ? 'nullable|string|min:6' : 'required|string|min:6',
+            'role'     => 'required|in:admin,manager,staff',
         ]);
 
         if ($validator->fails()) {
@@ -38,23 +40,39 @@ class UserController extends Controller
         }
 
         try {
-            // 2. Insert ke Database
-            $userId = DB::table('users')->insertGetId([
+            // Siapkan data dasar
+            $data = [
                 'name'       => $request->name,
                 'email'      => $request->email,
-                'password'   => Hash::make($request->password), // Enkripsi password
-                // 'role'       => $request->role,
-                'created_at' => now(),
+                'role'       => $request->role,
                 'updated_at' => now(),
-            ]);
+            ];
+
+            // Jika password diisi (wajib di Create / opsional di Edit), tambahkan ke array
+            if ($request->filled('password')) {
+                $data['password'] = Hash::make($request->password);
+            }
+
+            if ($isEdit) {
+                // PROSES EDIT
+                DB::table('users')->where('id', $userId)->update($data);
+                $message = 'User berhasil diperbarui';
+                $finalId = $userId;
+            } else {
+                // PROSES CREATE
+                $data['created_at'] = now();
+                $finalId = DB::table('users')->insertGetId($data);
+                $message = 'User berhasil ditambahkan';
+            }
 
             return response()->json([
-                'message' => 'User berhasil ditambahkan',
-                'id'      => $userId
-            ], 201);
+                'message' => $message,
+                'id'      => $finalId
+            ], $isEdit ? 200 : 201);
 
         } catch (\Exception $e) {
-            return response()->json(['message' => $e], 500);
+            // Tip: $e->getMessage() lebih aman untuk log daripada mengirim seluruh object exception
+            return response()->json(['message' => 'Terjadi kesalahan server'], 500);
         }
     }
 

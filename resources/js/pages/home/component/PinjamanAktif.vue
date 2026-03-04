@@ -3,7 +3,7 @@
     <h1 class="text-2xl font-extrabold">Pinjaman Aktif</h1>
     <div class="flex gap-2">
       <button @click="modals.installment = true" class="cursor-pointer bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold flex gap-2 items-center hover:bg-amber-600"><i class="fa-solid fa-money-bill-1"></i> Bayar</button>
-      <button @click="modals.loan = true" class="cursor-pointer bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex gap-2 items-center hover:bg-emerald-700"><i class="fa-solid fa-plus"></i> Baru</button>
+      <button v-if="user.role !== 'staff'" @click="modals.loan = true" class="cursor-pointer bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex gap-2 items-center hover:bg-emerald-700"><i class="fa-solid fa-plus"></i> Baru</button>
     </div>
   </div>
   <div v-if="isLoading" class="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/20 backdrop-blur-sm">
@@ -70,7 +70,8 @@ import BayarTagihan from "./BayarTagihan.vue";
 import PinjamanDetailModal from "./PinjamanDetailModal.vue";
 const props = defineProps({
   members: Array,
-  modals: Object
+  modals: Object,
+  user: Object
 })
 
 const loans = ref([])

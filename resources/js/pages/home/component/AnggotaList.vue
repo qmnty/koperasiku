@@ -42,7 +42,7 @@
         >
       </div>
 
-      <button @click="modals.member = true" class="bg-emerald-600 text-white px-4 py-2 rounded-xl cursor-pointer hover:bg-emerald-700 transition flex items-center gap-2 font-bold text-sm">
+      <button v-if="user.role !== 'staff'" @click="modals.member = true" class="bg-emerald-600 text-white px-4 py-2 rounded-xl cursor-pointer hover:bg-emerald-700 transition flex items-center gap-2 font-bold text-sm">
         <i class="fa-solid fa-plus text-xs"></i>
         <span class="hidden sm:inline">Anggota</span>
       </button>
@@ -82,7 +82,7 @@
           </div>
         </div>
         <div class="mt-4 flex gap-2">
-          <button v-if="m.status === 'aktif'" @click="selectedMemberId = m.id; modals.tarik = true" class="cursor-pointer flex-1 bg-red-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition">Tarik</button>
+          <button v-if="m.status === 'aktif' && user.role !== 'staff'" @click="selectedMemberId = m.id; modals.tarik = true" class="cursor-pointer flex-1 bg-red-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition">Tarik</button>
           <button v-if="m.status === 'aktif'" @click="selectedMemberId = m.id; modals.saving = true" class="cursor-pointer flex-1 bg-emerald-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition">Setor</button>
           <button @click="showMemberRiwayat(m.id)" class="cursor-pointer flex-1 bg-slate-100 text-slate-600 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition">Detail</button>
         </div>
@@ -128,6 +128,7 @@ const props = defineProps({
     type: Object,
     required: true
   },
+  user: Object
 });
 
 const isLoading = ref(true)

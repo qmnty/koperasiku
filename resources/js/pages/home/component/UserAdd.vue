@@ -33,7 +33,7 @@
             <div>
               <label class="block text-[10px] font-black text-slate-400 uppercase ml-2 mb-1 tracking-widest">Password</label>
               <div class="relative">
-                <input :type="showPassword ? 'text' : 'password'" v-model="form.password" required placeholder="••••••••"
+                <input :type="showPassword ? 'text' : 'password'" v-model="form.password" :required="isEdit ? false : true" placeholder="••••••••"
                   class="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition">
                 <button type="button" @click="showPassword = !showPassword" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition">
                   <i :class="['fa-solid', showPassword ? 'fa-eye-slash' : 'fa-eye']"></i>
@@ -46,7 +46,7 @@
               <div class="grid grid-cols-3 gap-2">
                 <button v-for="r in ['admin', 'manager', 'staff']" :key="r" type="button"
                   @click="form.role = r"
-                  :class="['py-2.5 rounded-xl text-[10px] font-black uppercase transition border-2', 
+                  :class="['py-2.5 rounded-xl text-[10px] font-black uppercase transition border-2 cursor-pointer', 
                     form.role === r ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100' : 'bg-white border-slate-100 text-slate-400 hover:border-emerald-200']">
                   {{ r }}
                 </button>
@@ -54,7 +54,7 @@
             </div>
 
             <button type="submit" :disabled="loading"
-              class="w-full mt-4 py-4 bg-emerald-600 text-white rounded-[1.5rem] font-black shadow-xl shadow-emerald-200 hover:bg-emerald-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+              class="w-full mt-4 py-4 cursor-pointer bg-emerald-600 text-white rounded-[1.5rem] font-black shadow-xl shadow-emerald-200 hover:bg-emerald-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
               <i v-if="loading" class="fa-solid fa-circle-notch animate-spin"></i>
               {{ loading ? 'MENYIMPAN...' : 'SIMPAN PENGGUNA' }}
             </button>
@@ -71,7 +71,8 @@ import api from '@/lib/api';
 
 const props = defineProps({
   modals: Object,
-  data: Object
+  data: Object,
+  isEdit: { type: Boolean, default: false}
 });
 
 const emit = defineEmits(['success']);
@@ -79,6 +80,7 @@ const emit = defineEmits(['success']);
 const loading = ref(false);
 const showPassword = ref(false);
 const form = reactive({
+  id: '',
   name: '',
   email: '',
   password: '',
@@ -91,7 +93,7 @@ const handleAddUser = async () => {
     const res = await api.post('users', form);
     if (res.status === 201 || res.status === 200) {
       props.modals.user = false;
-      emit('success'); // Memberitahu parent untuk refresh list user
+      emit('success');
     }
   } catch (e) {
     alert(e.response?.data?.message || 'Gagal menyimpan user');
@@ -102,8 +104,10 @@ const handleAddUser = async () => {
 
 onMounted(() => {
   if (props.data) {
+    form.id = props.data.id;
     form.name = props.data.name;
     form.email = props.data.email;
+    form.role = props.data.role;
   }
 });
 </script>

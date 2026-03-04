@@ -6,7 +6,7 @@
         <p class="text-sm text-slate-500 font-medium">Total {{ filteredUsers.length }} pengguna sistem</p>
       </div>
       
-      <button @click="modals.user = true" class="cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-2xl font-bold text-sm shadow-lg shadow-emerald-200 transition flex items-center gap-2">
+      <button @click="createUser" class="cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-2xl font-bold text-sm shadow-lg shadow-emerald-200 transition flex items-center gap-2">
         <i class="fa-solid fa-user-plus"></i>
         Tambah User
       </button>
@@ -75,8 +75,10 @@
     </div>
   </div>
   <UserAdd 
+    v-if="modals.user"
     :modals="modals"
     :data="userData"
+    :isEdit="isEdit"
     @success="fetchUsers"
   />
 </template>
@@ -91,6 +93,7 @@ const loading = ref(true);
 const search = ref('');
 const filterRole = ref('');
 const userData = ref(null);
+const isEdit = ref(false)
 
 const props = defineProps({
   modals: Object
@@ -127,8 +130,14 @@ const roleColor = (role) => {
 
 onMounted(fetchUsers);
 
+const createUser = () => {
+  props.modals.user = true
+  isEdit.value = false
+  userData.value = null;
+}
 const editUser = (user) => {
   userData.value = user;
+  isEdit.value = true
   props.modals.user = true;
 };
 
