@@ -144,10 +144,14 @@ const currentLoanCalc = computed(() => {
   
   // 2. Tentukan progress untuk aturan pinalti pelunasan
   // Jika sisa tenor masih banyak (misal total tenor 12, sisa 12), berarti progress masih 0
-  const totalTenor = data.tenor || 12; // Pastikan backend kirim ini
+  const totalTenor = data.tenor || 12;
   const sisaTenor = data.sisa_tenor;
   const angsuranKe = totalTenor - sisaTenor + 1;
-  const progress = (angsuranKe / totalTenor);
+  // const progress = (angsuranKe / totalTenor);
+  const progress = data.total_tagihan > 0 
+  ? (data.total_bayar / data.total_tagihan)
+  : 0;
+  console.log(progress)
 
   // 3. Logika bungaRate: 
   // Jika Lunas & Progress < 50% maka 2% (0.02), jika tidak maka 1% (0.01)
@@ -170,8 +174,12 @@ const currentLoanCalc = computed(() => {
   }
 
   // 5. Hitung pokok
-  const pokokBayar = instForm.isLunas 
-    ? (data.pokok * sisaTenor) 
+  // const pokokBayar = instForm.isLunas 
+  //   ? (data.pokok * sisaTenor) 
+  //   : data.pokok;
+
+  const pokokBayar = instForm.isLunas
+    ? (data.total_tagihan - data.total_bayar)
     : data.pokok;
 
   return { 

@@ -33,11 +33,13 @@ class PinjamanController extends Controller
             ->get();
 
         $pinjamanAktif = $pinjamanAktif->map(function ($item) {
-            $sisaHutang = $item->realisasi - $item->total_bayar;
+            $totalBayar = ($item->pokok + ($item->realisasi * 0.01 ));
+            $sisaHutang = $item->total_tagihan - $item->total_bayar;
+            // dd($sisaHutang, $item->pokok);
             
             // Cegah error division by zero jika pokok 0
-            $item->sisaTenorManual = ($item->pokok > 0) 
-                ? ceil($sisaHutang / $item->pokok) 
+            $item->sisaTenorManual = ($totalBayar > 0) 
+                ? ceil($sisaHutang / $totalBayar) 
                 : 0;
 
             $item->sisaTagihan = $item->total_tagihan - $item->total_bayar;
@@ -93,6 +95,8 @@ class PinjamanController extends Controller
                 'pinjamans.angsuran_per_bulan',
                 'pinjamans.nominal_realisasi',
                 'pinjamans.sisa_tenor',
+                'pinjamans.total_bayar',
+                'pinjamans.total_tagihan',
                 'anggotas.nama_lengkap as nama_anggota'
             )
             ->where('no_kontrak', $id)
@@ -105,7 +109,7 @@ class PinjamanController extends Controller
 
         // Hitung simulasi (1% bunga dari realisasi)
         $bungaEstimasi = $pinjaman->nominal_realisasi * 0.01;
-        $totalTagihan = $pinjaman->angsuran_per_bulan + $bungaEstimasi;
+        // $totalTagihan = $pinjaman->angsuran_per_bulan + $bungaEstimasi;
 
         return response()->json([
             'id'             => $pinjaman->id,
@@ -114,7 +118,9 @@ class PinjamanController extends Controller
             'pokok'          => (float) $pinjaman->angsuran_per_bulan,
             'sisa_tenor'     => $pinjaman->sisa_tenor,
             'bunga_estimasi' => $bungaEstimasi,
-            'total_tagihan'  => $totalTagihan,
+            // 'total_tagihan'  => $totalTagihan,
+            'total_tagihan'  => $pinjaman->total_tagihan,
+            'total_bayar'    => $pinjaman->total_bayar
         ]);
     }
 
