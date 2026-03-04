@@ -33,7 +33,7 @@
           <div>
             <div class="flex justify-between items-center mb-2 px-4">
               <label class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Kata Sandi</label>
-              <a href="#" class="text-[10px] font-black text-emerald-600 uppercase hover:underline">Lupa?</a>
+              <!-- <a href="#" class="text-[10px] font-black text-emerald-600 uppercase hover:underline">Lupa?</a> -->
             </div>
             <div class="relative group">
               <i class="fa-solid fa-lock absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors"></i>
