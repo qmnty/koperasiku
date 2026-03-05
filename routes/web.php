@@ -26,16 +26,18 @@ Route::middleware(['auth'])->group(function () {
     //Anggota
     Route::prefix('anggota')->group(function () {
         Route::get('/', [AnggotaController::class, 'index'])->name('anggota.index');
+        Route::get('/pj', [AnggotaController::class, 'get_pj'])->name('anggota.pj');
         Route::post('/import', [AnggotaController::class, 'import'])->name('anggota.import');
         Route::get('/riwayat-transaksi/{anggotaId}', [AnggotaController::class, 'showRiwayatTransaksi'])->name('anggota.riwayat-transaksi');
         Route::post('/simpanan/store', [AnggotaController::class, 'storeSimpanan'])->name('anggota.simpanan.store');
         Route::post('/simpanan/tarik-store', [AnggotaController::class, 'storeTarik'])->name('anggota.simpanan.tarik');
-        //Pinjaman
         Route::middleware('role:admin,manager')->group(function () {
             Route::patch('/{id}/status', [AnggotaController::class, 'status'])->name('anggota.status');
+            //Pinjaman
             Route::post('/store', [AnggotaController::class, 'store'])->name('anggota.store');
             Route::post('/pinjaman/store', [AnggotaController::class, 'storePinjaman'])->name('anggota.pinjaman.store');
         });
+        Route::get('/export', [AnggotaController::class, 'export'])->name('anggota.export');
     });
     
     Route::prefix('pinjaman')->group(function () {

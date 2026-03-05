@@ -33,6 +33,17 @@
             @change="handleFileChange" 
         />
       </div>
+      <Button 
+        @click="exportAnggota" 
+        class="mt-4 lg:mt-0 ml-2 cursor-pointer bg-cyan-600 text-white rounded-xl text-xs font-bold hover:bg-cyan-700 transition flex items-center gap-2"
+      >
+        <template v-if="exporting">
+          <i class="fas fa-spinner animate-spin"></i>
+        </template>
+        <template v-else>
+          <i class="fa-solid fa-file-lines text-xl"></i>
+        </template>
+      </Button>
     </div>
     
     <div class="flex flex-wrap gap-2 w-full lg:w-auto">
@@ -76,7 +87,7 @@
 
       <button v-if="user.role !== 'staff'" @click="modals.member = true" class="bg-emerald-600 text-white px-4 py-2 rounded-xl cursor-pointer hover:bg-emerald-700 transition flex items-center gap-2 font-bold text-sm">
         <i class="fa-solid fa-plus text-xs"></i>
-        <span class="hidden sm:inline">Anggota</span>
+        <!-- <span class="hidden sm:inline">Anggota</span> -->
       </button>
     </div>
   </div>
@@ -212,21 +223,24 @@ const selectedMemberId = ref(null)
 const selectedGroup = ref('')
 const onImport = ref(false)
 const fileInput = ref(null);
+const groups = ref(null)
+
+const exporting = ref(false)
 
 const selectedStatus = ref('')
 
-const groups = computed(() => {
-  if (!memberList.value.length) return [];
+// const groups = computed(() => {
+//   if (!memberList.value.length) return [];
   
-  // Ambil unique PJ
-  const uniquePj = [...new Set(memberList.value.map(m => m.pj))].filter(Boolean);
+//   // Ambil unique PJ
+//   const uniquePj = [...new Set(memberList.value.map(m => m.pj))].filter(Boolean);
   
-  // Map ke bentuk Object agar bisa dibaca Dropdown
-  return uniquePj.sort().map(name => ({
-    id: name,    // Kita gunakan nama PJ sebagai ID untuk v-model
-    nama: name   // Ini yang akan tampil di label
-  }));
-});
+//   // Map ke bentuk Object agar bisa dibaca Dropdown
+//   return uniquePj.sort().map(name => ({
+//     id: name,    // Kita gunakan nama PJ sebagai ID untuk v-model
+//     nama: name   // Ini yang akan tampil di label
+//   }));
+// });
 
 const filteredMembers = computed(() => {
   const q = searchTerm.value.toLowerCase();
@@ -317,6 +331,30 @@ const handleFileChange = async (event) => {
         event.target.value = '';
     }
 };
+
+async function exportAnggota() {
+  exporting.value = true;
+  try {
+    // Gunakan axios untuk mendownload file sebagai blob
+    const response = await api.get('anggota/export', {
+      responseType: 'blob' 
+    });
+
+    // Proses download di browser
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Anggota Koperasi.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error("Gagal export:", error);
+    alert("Terjadi kesalahan saat mengunduh data.");
+  } finally {
+    exporting.value = false;
+  }
+}
 
 async function toggleStatus(member) {
   // Opsi: Tambahkan konfirmasi sederhana
@@ -409,7 +447,26 @@ async function fetchAnggota(page = 1) {
   }
 }
 
-onMounted(() => {
+async function fetchPJ()
+{
+  try {
+    const res = await api.get('anggota/pj')
+    if(res.data) {
+      groups.value = res.data
+        .map(item => ({
+          id: item.pj,   // Ambil nilai dari key 'pj'
+          nama: item.pj  // Gunakan nilai yang sama untuk label di dropdown
+        }))
+        // Opsional: Urutkan secara numerik jika PJ berupa angka
+        .sort((a, b) => parseInt(a.nama) - parseInt(b.nama));
+    }
+  } catch(e) {
+    console.log(e)
+  }
+}
+
+onMounted(async() => {
   fetchAnggota();
+  await fetchPJ();
 })
 </script>

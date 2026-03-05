@@ -23,12 +23,12 @@
         >
       </div>
       
-      <!-- <select v-model="filterRole" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
+      <select v-model="filterRole" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
         <option value="">Semua Role</option>
         <option value="admin">Admin</option>
         <option value="staff">Staff</option>
         <option value="manager">Manager</option>
-      </select> -->
+      </select>
     </div>
 
     <div v-if="loading" class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -50,12 +50,12 @@
         </div>
 
         <div class="flex justify-between items-center pt-4 border-t border-slate-50">
-          <!-- <span :class="[
+          <span :class="[
             'text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest',
             roleColor(user.role)
           ]">
             {{ user.role }}
-          </span> -->
+          </span>
           
           <div class="flex gap-2">
             <button @click="editUser(user)" class="cursor-pointer w-8 h-8 rounded-lg bg-slate-100 text-slate-400 hover:bg-amber-100 hover:text-amber-600 transition flex items-center justify-center">

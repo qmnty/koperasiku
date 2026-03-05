@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\AnggotaEnum;
 use App\Enums\TransaksiEnum;
+use App\Exports\AnggotaExport;
 use App\Imports\AnggotaImport;
 use App\Models\Anggota;
 use App\Models\Pinjaman;
@@ -66,6 +67,16 @@ class AnggotaController extends Controller
         $anggotas = $query->paginate($perPage);
 
         return response()->json($anggotas);
+    }
+
+    public function get_pj()
+    {
+        $query = DB::table('anggotas')
+            ->distinct('pj')
+            ->select('pj')
+            ->get();
+
+        return response()->json($query);
     }
 
     public function import(Request $request)
@@ -164,6 +175,12 @@ class AnggotaController extends Controller
         });
 
         return response()->json(['message' => 'Anggota dan setoran awal berhasil disimpan'], 201);
+    }
+
+    public function export()
+    {
+        $fileName = 'Data Anggota Koperasi.xlsx';
+        return Excel::download(new AnggotaExport(), $fileName);        
     }
 
     public function status(Request $request, $anggotaId) {
