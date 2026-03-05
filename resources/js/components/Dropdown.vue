@@ -11,7 +11,10 @@
         @focus="isOpen = true"
         @input="handleInput"
         :placeholder="placeholder"
-        class="w-full border-2 border-slate-100 rounded-2xl py-2 px-5 font-bold bg-slate-50 outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition pr-12"
+        :class="[
+          'w-full border-2 border-slate-100 rounded-2xl py-2 px-5 font-bold bg-slate-50 outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition pr-12',
+          props.baseClass
+        ]"
       >
       
       <div class="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
@@ -53,6 +56,7 @@ const props = defineProps({
   options: { type: Array, default: () => [] },
   placeholder: { type: String, default: 'Cari...' },
   label: String,
+  baseClass: { type: String, default: '' },
   
   // PROPS BARU UNTUK FLEKSIBILITAS
   valueKey: { type: String, default: 'id' },        // Key untuk value (ID)

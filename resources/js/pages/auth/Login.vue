@@ -24,7 +24,7 @@
                 v-model="form.email"
                 type="email" 
                 required 
-                placeholder="admin@koperasi.com"
+                placeholder="user@example.com"
                 class="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white transition-all"
               >
             </div>

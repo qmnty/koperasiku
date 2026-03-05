@@ -3,27 +3,27 @@
 namespace App\Http\Controllers;
 
 use App\Enums\TransaksiEnum;
+use App\Imports\AnggotaImport;
 use App\Models\Anggota;
 use App\Models\Pinjaman;
 use App\Models\Transaksi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Maatwebsite\Excel\Facades\Excel;
 
 class AnggotaController extends Controller
 {
     public function index(Request $request)
     {
-        // 1. Memulai query ke model Anggota
+        // Gunakan DB::table atau Model Anggota
         $query = DB::table('anggotas as a')
-            // 1. Join ke tabel transaksi untuk mengambil data transaksi
             ->leftJoin('transaksis as t', function($join) {
                 $join->on('a.id', '=', 't.anggota_id')
-                    // 2. Filter hanya transaksi sukarela pada join
                     ->where('t.jenis_transaksi', '=', TransaksiEnum::SUKARELA->value);
             })
-            // 3. Pilih kolom yang diperlukan dan hitung total debit (saldo masuk)
             ->select(
                 'a.id',
                 'a.no_anggota',
@@ -33,35 +33,64 @@ class AnggotaController extends Controller
                 'a.saldo_pokok as pokok',
                 'a.saldo_khusus as khusus',
                 'a.status',
-                // Hitung total debit sukarela, gunakan IFNULL agar null menjadi 0
                 DB::raw('IFNULL(SUM(t.debit), 0) as sukarela')
             )
-            // 4. Kelompokkan berdasarkan anggota untuk agregasi SUM
-            ->groupBy('a.id', 'a.no_anggota', 'a.nama_lengkap', 'a.pj')
-            ->orderBy('a.nama_lengkap', 'asc');
+            // Tambahkan semua kolom non-agregasi ke groupBy
+            ->groupBy('a.id', 'a.no_anggota', 'a.nama_lengkap', 'a.pj', 'a.saldo_wajib', 'a.saldo_pokok', 'a.saldo_khusus', 'a.status');
 
-        if($request->has('only_aktif')) {
-            $query->where('a.status', 'aktif');
-        }
-
-        // 2. Fitur Pencarian (berdasarkan nama atau nomor anggota)
-        if ($request->has('search')) {
+        // Filter Search
+        if ($request->filled('search')) {
             $searchTerm = $request->search;
             $query->where(function($q) use ($searchTerm) {
-                $q->where('nama_lengkap', 'like', '%' . $searchTerm . '%')
-                  ->orWhere('no_anggota', 'like', '%' . $searchTerm . '%');
+                $q->where('a.nama_lengkap', 'like', '%' . $searchTerm . '%')
+                ->orWhere('a.no_anggota', 'like', '%' . $searchTerm . '%');
             });
         }
 
-        // 3. Mengurutkan berdasarkan tanggal daftar terbaru
-        $query->orderBy('tanggal_daftar', 'desc');
+        // Filter Status (Sesuai parameter dari Vue)
+        if ($request->filled('status')) {
+            $query->where('a.status', $request->status);
+        }
 
-        // 4. Menggunakan pagination (misal: 10 anggota per halaman)
-        $anggotas = $query->paginate(10);
+        // Filter Group/PJ
+        if ($request->filled('group')) {
+            $query->where('a.pj', $request->group);
+        }
 
-        // 5. Mengembalikan data dalam bentuk JSON
+        // Sorting
+        $query->orderBy('a.nama_lengkap', 'asc');
+
+        // Paginate (Laravel otomatis menghandle offset & limit berdasarkan ?page=x)
+        $perPage = $request->get('per_page', 12); // Default 12 agar pas dengan grid col-3
+        $anggotas = $query->paginate($perPage);
+
         return response()->json($anggotas);
     }
+
+    public function import(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'file' => 'required|mimes:xlsx,xls,csv'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => 'File tidak valid'], 422);
+        }
+
+        try {
+            Excel::import(new AnggotaImport(), $request->file('file'));
+            
+            return response()->json([
+                'message' => 'Data anggota berhasil diimport!'
+            ], 200);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function store(Request $request)
     {
         // 1. Validasi Input sesuai dengan object member di frontend

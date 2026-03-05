@@ -6,9 +6,33 @@
     </div>
   </div>
   <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-    <div>
-      <h1 class="text-2xl font-extrabold text-slate-800">Data Anggota</h1>
-      <p class="text-xs text-slate-500 font-medium">Total: {{ filteredMembers.length }} Anggota ditemukan</p>
+    <div class="flex flex-col lg:flex-row">
+      <div>
+        <h1 class="text-2xl font-extrabold text-slate-800">Data Anggota</h1>
+        <p class="text-xs text-slate-500 font-medium">Total: {{ filteredMembers.length }} Anggota ditemukan</p>
+      </div>
+      <div>
+        <Button 
+          @click="importAnggotaConfirmation" 
+          :disabled="onImport"
+          class="mt-4 lg:mt-0 cursor-pointer bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition flex items-center gap-2"
+        >
+          <template v-if="onImport">
+            <i class="fas fa-spinner animate-spin"></i> Memproses...
+          </template>
+          <template v-else>
+            Import Anggota
+          </template>
+        </Button>
+
+        <input 
+            type="file" 
+            ref="fileInput" 
+            class="hidden" 
+            accept=".xlsx, .xls" 
+            @change="handleFileChange" 
+        />
+      </div>
     </div>
     
     <div class="flex flex-wrap gap-2 w-full lg:w-auto">
@@ -20,14 +44,22 @@
         <option value="aktif">Aktif</option>
         <option value="tidak_aktif">Tidak Aktif</option>
       </select>
-
-      <select 
+      <div class="w-64">
+        <Dropdown 
+          baseClass="bg-white!"
+          v-model="selectedGroup"
+          :options="groups"
+          placeholder="Cari PJ Kelompok..."
+          @change="fetchAnggota" 
+        />
+      </div>
+      <!-- <select 
         v-model="selectedGroup"
         class="bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 transition cursor-pointer"
       >
         <option value="">Semua Kelompok</option>
         <option v-for="g in groups" :key="g" :value="g">{{ g }}</option>
-      </select>
+      </select> -->
 
       <div class="relative flex-grow sm:flex-grow-0">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search absolute left-3 top-2.5 text-slate-400">
@@ -87,6 +119,29 @@
           <button @click="showMemberRiwayat(m.id)" class="cursor-pointer flex-1 bg-slate-100 text-slate-600 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition">Detail</button>
         </div>
       </div>
+      <div v-if="pagination.last_page > 1" class="mt-8 flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <span class="text-xs text-slate-500 font-bold">
+          Halaman {{ pagination.current_page }} dari {{ pagination.last_page }}
+        </span>
+        
+        <div class="flex gap-2">
+          <button 
+            @click="fetchAnggota(pagination.current_page - 1)"
+            :disabled="pagination.current_page === 1"
+            class="cursor-pointer px-4 py-2 rounded-xl border border-slate-200 text-xs font-black disabled:opacity-30 hover:bg-slate-50 transition"
+          >
+            Sebelumnya
+          </button>
+          
+          <button 
+            @click="fetchAnggota(pagination.current_page + 1)"
+            :disabled="pagination.current_page === pagination.last_page"
+            class="cursor-pointer px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-black disabled:opacity-30 hover:bg-emerald-700 transition"
+          >
+            Selanjutnya
+          </button>
+        </div>
+      </div>
     </div>
     <div v-else class="text-center py-12 text-slate-500 bg-white rounded-2xl border border-slate-200">
       <h3 class="text-lg font-semibold text-slate-700">Data Tidak Ditemukan</h3>
@@ -116,12 +171,21 @@
 
 <script setup>
 import api from '@/lib/api';
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, ref, computed, watch } from 'vue';
+import Swal from 'sweetalert2';
 import { formatIDR } from '@/lib/global';
 import AnggotaDetail from './AnggotaDetail.vue';
 import AnggotaSetor from './AnggotaSetor.vue';
 import AnggotaTarikTunai from './AnggotaTarikTunai.vue';
 import AnggotaAdd from './AnggotaAdd.vue';
+import Button from '@/components/ui/button/Button.vue';
+import Dropdown from '@/components/Dropdown.vue';
+
+const pagination = ref({
+  current_page: 1,
+  last_page: 1,
+  total: 0
+});
 
 const props = defineProps({
   modals: {
@@ -138,13 +202,22 @@ const memberList = ref([])
 const memberTransactions = ref([]);
 const selectedMemberId = ref(null)
 const selectedGroup = ref('')
+const onImport = ref(false)
+const fileInput = ref(null);
 
 const selectedStatus = ref('')
 
 const groups = computed(() => {
-  if (!memberList.value) return [];
-  const allGroups = memberList.value.map(m => m.pj);
-  return [...new Set(allGroups)].sort();
+  if (!memberList.value.length) return [];
+  
+  // Ambil unique PJ
+  const uniquePj = [...new Set(memberList.value.map(m => m.pj))].filter(Boolean);
+  
+  // Map ke bentuk Object agar bisa dibaca Dropdown
+  return uniquePj.sort().map(name => ({
+    id: name,    // Kita gunakan nama PJ sebagai ID untuk v-model
+    nama: name   // Ini yang akan tampil di label
+  }));
 });
 
 const filteredMembers = computed(() => {
@@ -166,6 +239,72 @@ const filteredMembers = computed(() => {
     return matchSearch && matchGroup && matchStatus;
   });
 });
+
+watch([searchTerm, selectedGroup, selectedStatus], () => {
+  fetchAnggota(1);
+});
+
+const importAnggotaConfirmation = async () => {
+    if (onImport.value) return;
+
+    const result = await Swal.fire({
+        title: 'Konfirmasi Import',
+        text: "Pilih file .xlsx untuk mengimpor data anggota.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Pilih File',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#16a34a', // Green-600
+        borderRadius: '1.5rem'
+    });
+
+    if (result.isConfirmed) {
+        // Memicu jendela file browser muncul
+        fileInput.value.click();
+    }
+};
+
+const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Mulai proses upload
+    onImport.value = true;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        // Tampilkan loading dialog agar user tidak interaksi sembarangan
+        Swal.fire({
+            title: 'Sedang Mengunggah',
+            text: 'Harap tunggu...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const response = await api.post('/anggota/import', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        Swal.fire({
+            title: 'Sukses!',
+            text: response.data.message || 'Data berhasil diimpor.',
+            icon: 'success',
+            borderRadius: '1.5rem'
+        });
+    } catch (error) {
+        Swal.fire({
+            title: 'Gagal',
+            text: error.response?.data?.message || 'Terjadi kesalahan saat mengunggah.',
+            icon: 'error'
+        });
+    } finally {
+        onImport.value = false;
+        // Penting: Reset input agar file yang sama bisa dipilih kembali jika perlu
+        event.target.value = '';
+    }
+};
 
 const tarikOnSuccess = (payload) => {
   fetchAnggota()
@@ -204,11 +343,29 @@ async function showMemberRiwayat(id) {
   }
 }
 
-async function fetchAnggota() {
+async function fetchAnggota(page = 1) {
   isLoading.value = true;
   try {
-    const response = await api.get('anggota');
-    memberList.value = response.data.data || response.data;
+    const response = await api.get('anggota', {
+      params: { 
+        page: page,
+        search: searchTerm.value, // Kirim search ke server
+        group: selectedGroup.value,
+        status: selectedStatus.value
+      }
+    });
+    if (response.data.data) {
+      memberList.value = response.data.data;
+      pagination.value = {
+        current_page: response.data.current_page,
+        last_page: response.data.last_page,
+        total: response.data.total
+      };
+    } else {
+      // Fallback jika backend belum di-paginate
+      memberList.value = response.data;
+    }
+    // memberList.value = response.data.data || response.data;
   } catch (error) {
     console.error("Gagal mengambil data anggota:", error);
   } finally {

@@ -26,6 +26,7 @@ Route::middleware(['auth'])->group(function () {
     //Anggota
     Route::prefix('anggota')->group(function () {
         Route::get('/', [AnggotaController::class, 'index'])->name('anggota.index');
+        Route::post('/import', [AnggotaController::class, 'import'])->name('anggota.import');
         Route::get('/riwayat-transaksi/{anggotaId}', [AnggotaController::class, 'showRiwayatTransaksi'])->name('anggota.riwayat-transaksi');
         Route::post('/simpanan/store', [AnggotaController::class, 'storeSimpanan'])->name('anggota.simpanan.store');
         Route::post('/simpanan/tarik-store', [AnggotaController::class, 'storeTarik'])->name('anggota.simpanan.tarik');
@@ -61,5 +62,4 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/{id}', [UserController::class, 'destroy']);    
         });
     });
-    
 });

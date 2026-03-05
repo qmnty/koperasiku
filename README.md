@@ -6,7 +6,7 @@ Sistem manajemen koperasi modern berbasis web untuk mengelola data anggota, pinj
 
 ## 🚀 Tech Stack
 
-- **Backend:** Laravel 11+ (PHP 8.2+)
+- **Backend:** Laravel 11+ (PHP 8.3+)
 - **Frontend:** Vue.js 3 (Composition API)
 - **Inertia.js:** Adhesif antara Laravel & Vue (Single Page Application)
 - **Styling:** Tailwind CSS
