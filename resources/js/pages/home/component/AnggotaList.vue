@@ -9,9 +9,9 @@
     <div class="flex flex-col lg:flex-row">
       <div>
         <h1 class="text-2xl font-extrabold text-slate-800">Data Anggota</h1>
-        <p class="text-xs text-slate-500 font-medium">Total: {{ filteredMembers.length }} Anggota ditemukan</p>
+        <p class="text-xs text-slate-500 font-medium">Total: {{ memberList.length }} Anggota ditemukan</p>
       </div>
-      <div>
+      <div v-if="user.role === 'admin'">
         <Button 
           @click="importAnggotaConfirmation" 
           :disabled="onImport"
@@ -86,18 +86,25 @@
   </div>
   <div v-else>
     <div v-if="memberList.length" class="grid grid-cols-1 md:grid-cols-3 gap-5">
-      <div v-for="m in filteredMembers" :key="m.id" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group">
+      <div v-for="m in memberList" :key="m.id" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group">
         <div class="flex justify-between items-start mb-4">
           <div>
             <h3 @click="showMemberRiwayat(m.id)" class="font-bold text-lg cursor-pointer group-hover:text-emerald-600 transition flex items-center gap-1">
               {{ m.nama }}<i class="fa-solid fa-circle-info"></i>
             </h3>
-            <span :class="[
-              'text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider border',
-              m.status === 'aktif' 
-                ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                : 'bg-slate-100 text-slate-500 border-slate-200'
-            ]">
+            <span 
+              @click="user.role !== 'staff' && toggleStatus(m)"
+              :class="[
+                'text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider border transition-all',
+                // Tambahkan cursor pointer hanya jika bukan staff
+                user.role !== 'staff' ? 'cursor-pointer hover:opacity-80 active:scale-95' : 'cursor-default',
+                
+                m.status === 'aktif' 
+                  ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                  : 'bg-slate-100 text-slate-500 border-slate-200'
+              ]"
+              :title="user.role === 'staff' ? 'Anda tidak memiliki akses' : 'Klik untuk ubah status'"
+            >
               {{ m.status || 'aktif' }}
             </span>
             <p class="text-[10px] text-slate-400 font-mono">ID: {{ m.no_anggota }}</p>
@@ -180,6 +187,7 @@ import AnggotaTarikTunai from './AnggotaTarikTunai.vue';
 import AnggotaAdd from './AnggotaAdd.vue';
 import Button from '@/components/ui/button/Button.vue';
 import Dropdown from '@/components/Dropdown.vue';
+import { debounce } from 'lodash';
 
 const pagination = ref({
   current_page: 1,
@@ -240,8 +248,12 @@ const filteredMembers = computed(() => {
   });
 });
 
+const debouncedFetch = debounce((page) => {
+  fetchAnggota(page);
+}, 1000);
+
 watch([searchTerm, selectedGroup, selectedStatus], () => {
-  fetchAnggota(1);
+  debouncedFetch(1);
 });
 
 const importAnggotaConfirmation = async () => {
@@ -305,6 +317,30 @@ const handleFileChange = async (event) => {
         event.target.value = '';
     }
 };
+
+async function toggleStatus(member) {
+  // Opsi: Tambahkan konfirmasi sederhana
+  const confirmMsg = `Ubah status ${member.nama} menjadi ${member.status === 'aktif' ? 'Non-Aktif' : 'Aktif'}?`;
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const newStatus = member.status === 'aktif' ? 'non-aktif' : 'aktif';
+    
+    // Panggil API (sesuaikan endpoint-mu)
+    await api.patch(`anggota/${member.id}/status`, {
+      status: newStatus
+    });
+
+    // Update data di lokal agar UI langsung berubah tanpa refresh
+    member.status = newStatus;
+    
+    // Opsional: Tampilkan notifikasi sukses
+    // alert('Status berhasil diperbarui');
+  } catch (error) {
+    console.error("Gagal mengubah status:", error);
+    alert('Gagal memperbarui status');
+  }
+}
 
 const tarikOnSuccess = (payload) => {
   fetchAnggota()

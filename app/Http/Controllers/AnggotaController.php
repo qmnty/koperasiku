@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AnggotaEnum;
 use App\Enums\TransaksiEnum;
 use App\Imports\AnggotaImport;
 use App\Models\Anggota;
@@ -32,11 +33,11 @@ class AnggotaController extends Controller
                 'a.saldo_wajib as wajib',
                 'a.saldo_pokok as pokok',
                 'a.saldo_khusus as khusus',
+                'a.saldo_sukarela as sukarela',
                 'a.status',
-                DB::raw('IFNULL(SUM(t.debit), 0) as sukarela')
             )
             // Tambahkan semua kolom non-agregasi ke groupBy
-            ->groupBy('a.id', 'a.no_anggota', 'a.nama_lengkap', 'a.pj', 'a.saldo_wajib', 'a.saldo_pokok', 'a.saldo_khusus', 'a.status');
+            ->groupBy('a.id', 'a.no_anggota', 'a.nama_lengkap', 'a.pj', 'a.saldo_wajib', 'a.saldo_pokok', 'a.saldo_khusus', 'a.saldo_sukarela', 'a.status');
 
         // Filter Search
         if ($request->filled('search')) {
@@ -107,10 +108,21 @@ class AnggotaController extends Controller
         DB::transaction(function () use ($validated) {
             
             // 3. Generate No Anggota Otomatis
-            $lastMember = Anggota::orderBy('id', 'desc')->first();
-            $nextId = $lastMember ? $lastMember->id + 1 : 1;
-            $noAnggota = 'ANGG-' . Carbon::now()->format('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            // $lastMember = Anggota::orderBy('id', 'desc')->first();
+            // $nextId = $lastMember ? $lastMember->id + 1 : 1;
+            // $noAnggota = 'ANGG-' . Carbon::now()->format('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            // 1. Ambil Tahun sekarang (misal: 2026 -> "26")
+            $tahunSekarang = Carbon::now()->format('y'); 
 
+            // 2. Hitung jumlah anggota yang terdaftar di tahun ini
+            // Diasumsikan ada kolom 'tanggal_daftar' atau pakai 'created_at'
+            $urutanTahunIni = Anggota::whereYear('created_at', Carbon::now()->year)->count();
+
+            // 3. Nomor urut adalah total + 1 (misal: 0 + 1 = 001)
+            $nextSequence = str_pad($urutanTahunIni + 1, 3, '0', STR_PAD_LEFT);
+
+            // 4. Gabungkan Format: PREFIX-26001
+            $noAnggota = AnggotaEnum::ANGGOTA->prefix() . "-" . $tahunSekarang . $nextSequence;
             // 4. Simpan data anggota
             $anggota = Anggota::create([
                 'no_anggota' => $noAnggota,
@@ -152,6 +164,14 @@ class AnggotaController extends Controller
         });
 
         return response()->json(['message' => 'Anggota dan setoran awal berhasil disimpan'], 201);
+    }
+
+    public function status(Request $request, $anggotaId) {
+        $request->validate(['status' => 'required|in:aktif,non-aktif']);
+        $anggota = Anggota::findOrFail($anggotaId);
+        $anggota->update(['status' => $request->status]);
+
+        return response()->json(['message' => 'Status updated']);
     }
 
     public function showRiwayatTransaksi(Request $request, $anggotaId)

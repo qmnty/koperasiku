@@ -32,6 +32,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/simpanan/tarik-store', [AnggotaController::class, 'storeTarik'])->name('anggota.simpanan.tarik');
         //Pinjaman
         Route::middleware('role:admin,manager')->group(function () {
+            Route::patch('/{id}/status', [AnggotaController::class, 'status'])->name('anggota.status');
             Route::post('/store', [AnggotaController::class, 'store'])->name('anggota.store');
             Route::post('/pinjaman/store', [AnggotaController::class, 'storePinjaman'])->name('anggota.pinjaman.store');
         });

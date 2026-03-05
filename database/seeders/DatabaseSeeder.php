@@ -19,7 +19,8 @@ class DatabaseSeeder extends Seeder
         User::factory()->create([
             'name' => 'Admin',
             'email' => 'admin@koperasi.com',
-            'password' => Hash::make('$Password5Us4h#')
+            'password' => Hash::make('$Password5Us4h#'),
+            'role' => 'admin'
         ]);
     }
 }

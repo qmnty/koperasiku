@@ -1,8 +1,10 @@
 <?php
 namespace App\Imports;
 
+use App\Enums\TransaksiEnum;
 use App\Models\Anggota;
 use App\Enums\AnggotaEnum;
+use App\Models\Transaksi;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Carbon\Carbon;
@@ -20,35 +22,25 @@ class AnggotaImport implements ToModel, WithHeadingRow
 
     public function model(array $row)
     {
-        // 1. Bersihkan data nama
         $nama = trim($row['nama_anggota']);
 
-        // 2. Skip jika baris kosong atau baris TOTAL
-        if (empty($nama) || $nama == 'TOTAL') {
+        if (empty($nama) || $nama == 'TOTAL' || Anggota::where('nama_lengkap', $nama)->exists()) {
             return null;
         }
 
-        // 3. DETEKSI: Cek apakah nama sudah ada di database
-        // Kita gunakan where nama_lengkap untuk cek duplikat
-        $isExist = Anggota::where('nama_lengkap', $nama)->exists();
-
-        if ($isExist) {
-            // Jika nama sudah ada, baris ini dilewati (skip)
-            return null;
-        }
-
-        // 4. Proses data jika belum ada
         $tanggal = $this->transformDate($row['tanggal']);
         
-        // Generate No Anggota menggunakan counter memori ($this->nextId)
-        $noAnggota = AnggotaEnum::ANGGOTA->prefix() . "-" .
-                     Carbon::now()->format('Ymd') .
-                     str_pad($this->nextId, 4, '0', STR_PAD_LEFT);
+        // --- LOGIC NOMOR ANGGOTA ---
+        // $tahun = Carbon::parse($tanggal)->format('y');
+        // $lastAnggota = Anggota::whereYear('created_at', Carbon::parse($tanggal)->year)
+        //                 ->orderBy('id', 'desc')
+        //                 ->first();
+        
+        // $lastSequence = $lastAnggota ? (int) substr($lastAnggota->no_anggota, -3) : 0;
+        $noAnggota = AnggotaEnum::ANGGOTA->prefix() . '-' . $row['nia'];
 
-        // Naikkan counter untuk baris berikutnya di excel yang sama
-        $this->nextId++;
-
-        return new Anggota([
+        // 1. Simpan Anggota Terlebih Dahulu
+        $anggota = Anggota::create([
             'nama_lengkap'   => $nama,
             'pj'             => $row['pj'],
             'saldo_pokok'    => $this->cleanNumber($row['pokok']),
@@ -59,16 +51,68 @@ class AnggotaImport implements ToModel, WithHeadingRow
             'updated_at'     => $tanggal,
             'no_anggota'     => $noAnggota
         ]);
+
+        // 2. Buat Transaksi untuk masing-masing saldo (jika ada isinya)
+        $jenisSimpanan = [
+            ['key' => 'pokok', 'enum' => TransaksiEnum::POKOK, 'ket' => 'Simpanan Pokok'],
+            ['key' => 'wajib', 'enum' => TransaksiEnum::WAJIB, 'ket' => 'Simpanan Wajib'],
+            ['key' => 'sukarela', 'enum' => TransaksiEnum::SUKARELA, 'ket' => 'Simpanan Sukarela'],
+        ];
+
+        foreach ($jenisSimpanan as $index => $simpanan) {
+            $nominal = $this->cleanNumber($row[$simpanan['key']]);
+            
+            if ($nominal > 0) {
+                // Gabungkan: Prefix + Timestamp + Microseconds + Index Loop
+                $uniqueCode = $simpanan['enum']->prefix() . "-" . 
+                              now()->format('YmdHisu') . 
+                              $index . 
+                              $anggota->id;
+
+                Transaksi::create([
+                    'anggota_id'        => $anggota->id,
+                    'kode_transaksi'    => $uniqueCode,
+                    'tanggal_transaksi' => $tanggal,
+                    'jenis_transaksi'   => $simpanan['enum'],
+                    'debit'             => $nominal,
+                    'kredit'            => 0,
+                    'keterangan'        => 'Setoran Awal ' . $simpanan['ket'],
+                ]);
+            }
+        }
+
+        return $anggota;
     }
 
     public function headingRow(): int
     {
-        return 3;
+        return 1;
     }
 
     private function cleanNumber($value)
     {
-        return $value ? (int) preg_replace('/[^0-9]/', '', $value) : 0;
+        if (empty($value)) return 0;
+        
+        // 1. Hapus "Rp" atau karakter non-digit kecuali titik/koma
+        $clean = preg_replace('/[^0-9,.]/', '', $value);
+        
+        // 2. Jika formatnya 1.000,00 (standar Indo), ubah titik jadi kosong, koma jadi titik
+        if (strpos($clean, ',') !== false && strpos($clean, '.') !== false) {
+            $clean = str_replace('.', '', $clean); // Buang titik ribuan
+            $clean = str_replace(',', '.', $clean); // Ubah koma desimal ke titik
+        } 
+        // 3. Jika hanya ada titik (misal 1.000)
+        elseif (strpos($clean, '.') !== false && strpos($clean, ',') === false) {
+            // Hati-hati: apakah ini ribuan atau desimal? 
+            // Biasanya di Excel tanpa koma, titik adalah ribuan.
+            $clean = str_replace('.', '', $clean);
+        }
+        // 4. Jika hanya ada koma (misal 1000,50)
+        elseif (strpos($clean, ',') !== false) {
+            $clean = str_replace(',', '.', $clean);
+        }
+
+        return (float) $clean;
     }
 
     private function transformDate($value)

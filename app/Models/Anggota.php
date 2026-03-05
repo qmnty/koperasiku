@@ -22,6 +22,8 @@ class Anggota extends Model
         'tanggal_daftar',
         'saldo_pokok',
         'saldo_wajib',
+        'saldo_khusus',
+        'saldo_sukarela',
         'plafon_pengajuan',
     ];
 
