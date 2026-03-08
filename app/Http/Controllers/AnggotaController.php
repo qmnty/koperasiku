@@ -121,7 +121,7 @@ class AnggotaController extends Controller
             // 3. Generate No Anggota Otomatis
             // $lastMember = Anggota::orderBy('id', 'desc')->first();
             // $nextId = $lastMember ? $lastMember->id + 1 : 1;
-            // $noAnggota = 'ANGG-' . Carbon::now()->format('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            // $noAnggota = 'ANGG' . Carbon::now()->format('Ymd') str_pad($nextId, 4, '0', STR_PAD_LEFT);
             // 1. Ambil Tahun sekarang (misal: 2026 -> "26")
             $tahunSekarang = Carbon::now()->format('y'); 
 
@@ -422,15 +422,18 @@ class AnggotaController extends Controller
 
                 $pencairan = $validated['realisasi'] - ($voucher + $khusus + $admin);
 
+                $rawAngsuran = $totalTagihan / (int)$validated['tenor'];
+                $angsuranFinal = ceil($rawAngsuran / 500) * 500;
+
                 $pinjaman = Pinjaman::create([
                     'anggota_id' => $validated['memberId'],
-                    'no_kontrak' => TransaksiEnum::ANGSURAN->prefix() . '-' . Carbon::now()->format('YmdHis'),
+                    'no_kontrak' => TransaksiEnum::PINJAMAN->prefix() . Carbon::now()->format('YmdHis'),
                     'tanggal_cair' => Carbon::parse($tanggalCair)->format('Y-m-d'), 
                     'jatuh_tempo' => Carbon::parse($jatuhTempo)->format('Y-m-d'),
                     'nominal_realisasi' => $validated['realisasi'],
                     'tenor' => (int)$validated['tenor'],
                     'total_tagihan' => $totalTagihan,
-                    'angsuran_per_bulan' => (int)$validated['angsuranPokok'],
+                    'angsuran_per_bulan' => (int)$angsuranFinal,
                     'sisa_tenor' => $validated['tenor'],
                     'status' => 'aktif',
                 ]);
@@ -438,7 +441,7 @@ class AnggotaController extends Controller
                 // 3. Simpan data transaksi pencairan (uang keluar dari kas koperasi)
                 Transaksi::create([
                     'anggota_id' => $validated['memberId'],
-                    'kode_transaksi' => TransaksiEnum::PENCAIRAN->prefix() . '-' . Carbon::now()->format('YmdHis'),
+                    'kode_transaksi' => TransaksiEnum::PENCAIRAN->prefix() . Carbon::now()->format('YmdHis'),
                     'tanggal_transaksi' => $tanggalCair,
                     'jenis_transaksi' => TransaksiEnum::PENCAIRAN->value,
                     'debit' => 0,

@@ -6,7 +6,7 @@ import {
   X, AlertCircle, ChevronRight, CheckCircle2
 } from 'lucide-vue-next';
 import api from '@/lib/api';
-import PinjamanAktif from './component/PinjamanAktif.vue';
+import PinjamanList from './component/PinjamanList.vue';
 import AnggotaList from './component/AnggotaList.vue';
 import TransaksiList from './component/TransaksiList.vue';
 import UserList from './component/UserList.vue';
@@ -81,7 +81,7 @@ async function getAnggota() {
       </section>
 
       <section v-if="activeTab === 'pinjaman'" class="fade-in">
-        <PinjamanAktif
+        <PinjamanList
           :members="members"
           :modals="modals"
           :user="props.user"

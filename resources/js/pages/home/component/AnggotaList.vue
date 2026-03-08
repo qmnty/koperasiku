@@ -15,7 +15,7 @@
         <Button 
           @click="importAnggotaConfirmation" 
           :disabled="onImport"
-          class="mt-4 lg:mt-0 cursor-pointer bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition flex items-center gap-2"
+          class="mt-4 m-2 lg:mt-0 cursor-pointer bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition flex items-center gap-2"
         >
           <template v-if="onImport">
             <i class="fas fa-spinner animate-spin"></i> Memproses...

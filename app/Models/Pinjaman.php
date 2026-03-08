@@ -21,6 +21,7 @@ class Pinjaman extends Model
         'nominal_realisasi',
         'tenor',
         'total_bunga',
+        'total_bayar',
         'total_tagihan',
         'angsuran_per_bulan',
         'status',

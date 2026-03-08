@@ -6,6 +6,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PinjamanController;
 use App\Http\Controllers\TransaksiController;
 use App\Http\Controllers\UserController;
+use App\Models\Pinjaman;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
@@ -45,6 +46,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/detail/{id}', [PinjamanController::class, 'detail'])->name('pinjaman.detail');
         Route::post('/bayar', [PinjamanController::class, 'bayar'])->name('pinjaman.bayar');
         Route::get('/riwayat/{id}', [PinjamanController::class, "history"])->name('pinjaman.history');
+        Route::post('/import', [PinjamanController::class, 'import'])->name('pinjaman.import');
+        Route::get('/export', [PinjamanController::class, 'export'])->name('pinjaman.export');
     });
     
     Route::prefix('transaksi')->group(function () {

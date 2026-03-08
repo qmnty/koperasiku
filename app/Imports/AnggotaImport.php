@@ -24,7 +24,7 @@ class AnggotaImport implements ToModel, WithHeadingRow
     {
         $nama = trim($row['nama_anggota']);
 
-        if (empty($nama) || $nama == 'TOTAL' || Anggota::where('nama_lengkap', $nama)->exists()) {
+        if (empty($nama) || $nama == 'TOTAL') {
             return null;
         }
 
@@ -37,7 +37,7 @@ class AnggotaImport implements ToModel, WithHeadingRow
         //                 ->first();
         
         // $lastSequence = $lastAnggota ? (int) substr($lastAnggota->no_anggota, -3) : 0;
-        $noAnggota = AnggotaEnum::ANGGOTA->prefix() . '-' . $row['nia'];
+        $noAnggota = AnggotaEnum::ANGGOTA->prefix() . $row['nia'];
 
         // 1. Simpan Anggota Terlebih Dahulu
         $anggota = Anggota::create([

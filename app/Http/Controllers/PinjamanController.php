@@ -3,8 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Enums\TransaksiEnum;
+use App\Exports\PinjamanExport;
+use App\Imports\PinjamanImport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PinjamanController extends Controller
 {
@@ -145,7 +149,7 @@ class PinjamanController extends Controller
             // 2. Simpan Transaksi (Uang Masuk ke Koperasi)
             DB::table('transaksis')->insert([
                 'anggota_id' => $loan->anggota_id,
-                'kode_transaksi' => TransaksiEnum::ANGSURAN->prefix() . '-' . now()->format('YmdHis'),
+                'kode_transaksi' => TransaksiEnum::ANGSURAN->prefix().now()->format('YmdHis'),
                 'tanggal_transaksi' => now()->format('Y-m-d'),
                 'debit' =>  (int)$validated['amount_paid'],
                 'jenis_transaksi' => 'angsuran',
@@ -183,5 +187,35 @@ class PinjamanController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Pembayaran berhasil']);
         });
+    }
+
+    public function import(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'file' => 'required|mimes:xlsx,xls,csv'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => 'File tidak valid'], 422);
+        }
+
+        try {
+            Excel::import(new PinjamanImport(), $request->file('file'));
+            
+            return response()->json([
+                'message' => 'Data pinjaman berhasil diimport!'
+            ], 200);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function export()
+    {
+        $fileName = 'Data Pinjaman Koperasi.xlsx';
+        return Excel::download(new PinjamanExport(), $fileName);        
     }
 }

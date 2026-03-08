@@ -1,6 +1,44 @@
 <template>
   <div class="flex justify-between mb-6">
-    <h1 class="text-2xl font-extrabold">Pinjaman Aktif</h1>
+    <!-- <h1 class="text-2xl font-extrabold">Pinjaman Aktif</h1> -->
+    <div class="flex flex-col lg:flex-row">
+      <div>
+        <h1 class="text-2xl font-extrabold text-slate-800">Pinjaman Aktif</h1>
+      </div>
+      <div v-if="user.role === 'admin'">
+        <Button 
+          @click="importPinjamanConfirmation" 
+          :disabled="onImport"
+          class="mt-4 ml-2 lg:mt-0 cursor-pointer bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition flex items-center gap-2"
+        >
+          <template v-if="onImport">
+            <i class="fas fa-spinner animate-spin"></i> Memproses...
+          </template>
+          <template v-else>
+            Import Pinjaman
+          </template>
+        </Button>
+
+        <input 
+            type="file" 
+            ref="fileInput" 
+            class="hidden" 
+            accept=".xlsx, .xls" 
+            @change="handleFileChange" 
+        />
+      </div>
+      <Button 
+        @click="exportPinjaman" 
+        class="mt-4 lg:mt-0 ml-2 cursor-pointer bg-cyan-600 text-white rounded-xl text-xs font-bold hover:bg-cyan-700 transition flex items-center gap-2"
+      >
+        <template v-if="exporting">
+          <i class="fas fa-spinner animate-spin"></i>
+        </template>
+        <template v-else>
+          <i class="fa-solid fa-file-lines text-xl"></i>
+        </template>
+      </Button>
+    </div>
     <div class="flex gap-2">
       <button @click="modals.installment = true" class="cursor-pointer bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold flex gap-2 items-center hover:bg-amber-600"><i class="fa-solid fa-money-bill-1"></i> Bayar</button>
       <button v-if="user.role !== 'staff'" @click="modals.loan = true" class="cursor-pointer bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex gap-2 items-center hover:bg-emerald-700"><i class="fa-solid fa-plus"></i> Baru</button>
@@ -68,6 +106,8 @@ import { onMounted, ref } from "vue";
 import api from "@/lib/api";
 import BayarTagihan from "./BayarTagihan.vue";
 import PinjamanDetailModal from "./PinjamanDetailModal.vue";
+import Button from "@/components/ui/button/Button.vue";
+import Swal from "sweetalert2";
 const props = defineProps({
   members: Array,
   modals: Object,
@@ -80,6 +120,9 @@ const isLoading = ref(null)
 const selectedLoan = ref(null);
 const loanHistory = ref([]);
 const isLoadingHistory = ref(false);
+const onImport = ref(false)
+const exporting = ref(false)
+const fileInput = ref(null);
 
 function addLoans(newLoan)
 {
@@ -126,6 +169,91 @@ async function fetchPinjaman() {
     console.error("Gagal mengambil data anggota:", error);
   } finally {
     isLoading.value = false;
+  }
+}
+
+const importPinjamanConfirmation = async () => {
+    if (onImport.value) return;
+
+    const result = await Swal.fire({
+        title: 'Konfirmasi Import',
+        text: "Pilih file .xlsx untuk mengimpor data pinjaman.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Pilih File',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#16a34a', // Green-600
+        borderRadius: '1.5rem'
+    });
+
+    if (result.isConfirmed) {
+        // Memicu jendela file browser muncul
+        fileInput.value.click();
+    }
+};
+
+const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Mulai proses upload
+    onImport.value = true;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        Swal.fire({
+            title: 'Sedang Mengunggah',
+            text: 'Harap tunggu...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const response = await api.post('/pinjaman/import', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        Swal.fire({
+            title: 'Sukses!',
+            text: response.data.message || 'Data berhasil diimpor.',
+            icon: 'success',
+            borderRadius: '1.5rem'
+        });
+    } catch (error) {
+        Swal.fire({
+            title: 'Gagal',
+            text: error.response?.data?.message || 'Terjadi kesalahan saat mengunggah.',
+            icon: 'error'
+        });
+    } finally {
+        onImport.value = false;
+        // Penting: Reset input agar file yang sama bisa dipilih kembali jika perlu
+        event.target.value = '';
+    }
+};
+
+async function exportPinjaman() {
+  exporting.value = true;
+  try {
+    // Gunakan axios untuk mendownload file sebagai blob
+    const response = await api.get('pinjaman/export', {
+      responseType: 'blob' 
+    });
+
+    // Proses download di browser
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Pinjaman Koperasi.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error("Gagal export:", error);
+    alert("Terjadi kesalahan saat mengunduh data.");
+  } finally {
+    exporting.value = false;
   }
 }
 
