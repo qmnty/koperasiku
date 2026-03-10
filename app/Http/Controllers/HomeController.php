@@ -9,9 +9,14 @@ use Inertia\Inertia;
 class HomeController extends Controller
 {
     public function index() {
-    // Ini khusus nampilkan halaman login saja
-    return Inertia::render('auth/Login');
-}
+        // Ini khusus nampilkan halaman login saja
+        if(Auth::check()) {
+            return Inertia::render('home/Index', [
+                'user' => auth()->user()
+            ]);
+        }
+        return Inertia::render('auth/Login');
+    }
 
     public function dashboard() {
         // Ini khusus halaman setelah login

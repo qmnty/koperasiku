@@ -100,11 +100,16 @@ const handleLogin = async () => {
   try {
     const res = await api.post('/login', form);
     
+    if(res.data.status) {
+      // localStorage.setItem('token', res.data.token);
+      document.location.href = '/';
+    }
+
     // Simpan token (tergantung sistem auth Anda, misal: Sanctum)
-    localStorage.setItem('token', res.data.token);
+    // localStorage.setItem('token', res.data.token);
     
     // Redirect ke dashboard
-    document.location.href = '/';
+    // document.location.href = '/';
   } catch (e) {
     alert(e.response?.data?.message || 'Email atau password salah!');
   } finally {
