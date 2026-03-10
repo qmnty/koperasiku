@@ -12,14 +12,14 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class PinjamanController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $pinjamanAktif = DB::table('pinjamans as p')
+        // 1. Inisialisasi Query Builder (Jangan pakai ->get() di sini)
+        $query = DB::table('pinjamans as p')
             ->join('anggotas as a', 'p.anggota_id', '=', 'a.id')
-    
             ->select(
                 'p.id',
-                'p.no_kontrak as id',
+                'p.no_kontrak as no_kontrak', // Gunakan alias yang unik agar tidak bentrok dengan p.id
                 'p.anggota_id',
                 'a.nama_lengkap as nama',
                 'p.nominal_realisasi as realisasi',
@@ -33,24 +33,42 @@ class PinjamanController extends Controller
                 'p.status'
             )
             ->where('p.status', '=', 'aktif')
-            ->orderBy('p.tanggal_cair', 'desc')
-            ->get();
+            ->orderBy('p.tanggal_cair', 'desc');
 
-        $pinjamanAktif = $pinjamanAktif->map(function ($item) {
-            $totalBayar = ($item->pokok + ($item->realisasi * 0.01 ));
+        // 2. Filter Search
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('a.nama_lengkap', 'like', '%' . $searchTerm . '%')
+                ->orWhere('p.no_kontrak', 'like', '%' . $searchTerm . '%'); // Sesuaikan tabelnya (p atau a?)
+            });
+        }
+
+        // 3. Eksekusi Paginasi
+        // Ini akan mengembalikan objek LengthAwarePaginator
+        $perPage = $request->query('per_page', 10); // Default 10 data per halaman
+        $pinjamanAktif = $query->paginate($perPage);
+
+        // 4. Transformasi Data (Mapping)
+        // Gunakan setCollection untuk mengubah data di dalam paginator tanpa merusak struktur paginasi
+        $pinjamanAktif->setCollection($pinjamanAktif->getCollection()->map(function ($item) {
+            $biayaAdmin = $item->realisasi * 0.01;
+            $totalBayarPerBulan = $item->pokok + $biayaAdmin;
             $sisaHutang = $item->total_tagihan - $item->total_bayar;
-            // dd($sisaHutang, $item->pokok);
             
-            // Cegah error division by zero jika pokok 0
-            $item->sisaTenorManual = ($totalBayar > 0) 
-                ? ceil($sisaHutang / $totalBayar) 
+            // Hitung Sisa Tenor Manual
+            $item->sisaTenorManual = ($totalBayarPerBulan > 0) 
+                ? ceil($sisaHutang / $totalBayarPerBulan) 
                 : 0;
 
-            $item->sisaTagihan = $item->total_tagihan - $item->total_bayar;
+            $item->sisaTagihan = $sisaHutang;
+
+            $item->sisaHutang = $sisaHutang;
 
             return $item;
-        });
+        }));
 
+        // 5. Kembalikan response JSON (Struktur paginasi Laravel otomatis disertakan)
         return response()->json($pinjamanAktif);
     }
 
@@ -60,7 +78,7 @@ class PinjamanController extends Controller
             // Mengambil riwayat angsuran menggunakan Query Builder
             $history = DB::table('transaksis')
                 ->where('angsuran_id', $id)
-                ->where('jenis_transaksi', 'angsuran') // Sesuaikan dengan string di DB Anda
+                ->where('jenis_transaksi', TransaksiEnum::ANGSURAN->value) // Sesuaikan dengan string di DB Anda
                 ->orderBy('created_at', 'desc')
                 ->get();
 

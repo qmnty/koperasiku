@@ -54,6 +54,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [TransaksiController::class, 'index'])->name('transaksi.index');
         Route::get('/riwayat/{anggotaId}', [AnggotaController::class, 'showRiwayatTransaksi'])->name('anggota.riwayat-transaksi');
         Route::get('export', [TransaksiController::class, 'exportExcel'])->name('transaksi.export');
+        Route::get('/kategori', [TransaksiController::class, 'kategori'])->name('transaksi.kategori');
     });
     
     Route::get('date/{tenor}', function($tenor) {   

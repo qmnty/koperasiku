@@ -6,7 +6,7 @@
         <div>
           <span class="text-[10px] font-black bg-emerald-100 text-emerald-600 px-2 py-1 rounded-lg uppercase tracking-wider">Detail Pinjaman</span>
           <h2 class="text-2xl font-black text-slate-800 mt-2">{{ loan.nama }}</h2>
-          <p class="text-xs text-slate-400 font-mono">{{ loan.id }}</p>
+          <p class="text-xs text-slate-400 font-mono">{{ loan.no_kontrak }}</p>
         </div>
         <button @click="props.modals.loanDetail = false" class="bg-slate-100 text-slate-400 w-10 h-10 rounded-full hover:bg-rose-50 hover:text-rose-500 transition cursor-pointer">
           <i class="fa-solid fa-xmark"></i>

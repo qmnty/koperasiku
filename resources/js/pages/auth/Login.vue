@@ -76,7 +76,7 @@
       </div>
 
       <p class="text-center mt-8 text-xs font-bold text-slate-400">
-        &copy; 2024 Koperasi Digital v2.0 • Build with <i class="fa-solid fa-heart text-rose-400"></i>
+        &copy; 2026 Koperasi Digital v2.0
       </p>
     </div>
   </div>

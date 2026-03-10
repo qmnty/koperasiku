@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TransaksiEnum;
 use App\Exports\TransaksiExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,7 @@ class TransaksiController extends Controller
                 );
 
             if ($request->filled('search')) {
-                $query->where('anggotas.nama', 'LIKE', '%' . $request->search . '%');
+                $query->where('anggotas.nama_lengkap', 'LIKE', '%' . $request->search . '%');
             }
 
             if ($request->filled('start_date')) {
@@ -38,10 +39,14 @@ class TransaksiController extends Controller
 
             if ($request->filled('kategori')) {
                 if($request->kategori == 'setor') {
-                    $query->where('transaksis.jenis_transaksi', 'sukarela')
-                    ->orWhere('transaksis.jenis_transaksi', 'pokok')
-                    ->orWhere('transaksis.jenis_transaksi', 'wajib')
-                    ->orWhere('transaksis.jenis_transaksi', 'khusus');
+                    $query->whereIn('transaksis.jenis_transaksi', [
+                        TransaksiEnum::SUKARELA->value,
+                        TransaksiEnum::POKOK->value,
+                        TransaksiEnum::WAJIB->value,
+                        TransaksiEnum::TARIK->value,
+                        TransaksiEnum::PENCAIRAN->value,
+                        TransaksiEnum::ANGSURAN->value
+                    ]);
                 } else {
                     $query->where('transaksis.jenis_transaksi', $request->kategori);
                 }
@@ -52,24 +57,24 @@ class TransaksiController extends Controller
                 $query->where('anggotas.pj', $request->kelompok);
             }
 
-            $data = $query->orderBy('transaksis.created_at', 'desc')
-                ->limit(100)
-                ->get()
-                ->map(function($t) {
-                    $isKeluar = $t->kredit > 0;
-                    return [
-                        'id' => $t->id,
-                        'nama' => $t->nama,
-                        'kelompok' => $t->kelompok,
-                        'tipe' => $t->tipe,
-                        'is_keluar' => $isKeluar,
-                        'nominal' => $isKeluar ? $t->kredit : $t->debit,
-                        'tanggal' => date('d M Y, H:i', strtotime($t->created_at)),
-                        'notes' => $t->notes
-                    ];
-                });
+            $paginatedData = $query->orderBy('transaksis.created_at', 'desc')
+                ->paginate($request->query('per_page', 15));
 
-            return response()->json($data, 200);
+            $paginatedData->setCollection($paginatedData->getCollection()->map(function($t) {
+                $isKeluar = $t->kredit > 0;
+                return [
+                    'id' => $t->id,
+                    'nama' => $t->nama,
+                    'kelompok' => $t->kelompok,
+                    'tipe' => $t->tipe,
+                    'is_keluar' => $isKeluar,
+                    'nominal' => $isKeluar ? $t->kredit : $t->debit,
+                    'tanggal' => date('d M Y, H:i', strtotime($t->created_at)),
+                    'notes' => $t->notes
+                ];
+            }));
+
+            return response()->json($paginatedData, 200);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
@@ -81,5 +86,17 @@ class TransaksiController extends Controller
         $fileName = 'Laporan_Transaksi_' . date('Ymd_His') . '.xlsx';
         
         return Excel::download(new TransaksiExport($filters), $fileName);
+    }
+
+    public function kategori()
+    {
+        $options = collect(TransaksiEnum::cases())->map(function($case) {
+            return [
+                'value' => $case->value,
+                'label' => $case->value
+            ];
+        });
+        
+        return response()->json($options);
     }
 }

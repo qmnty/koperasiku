@@ -12,6 +12,7 @@ enum TransaksiEnum: string
     case WAJIB = 'wajib';
     case TARIK = 'tarik';
     case PINJAMAN = 'pinjaman';
+    case SIMPANAN = 'simpanan';
 
     // Tambahkan method untuk mengambil label
     public function label(): string
@@ -23,7 +24,8 @@ enum TransaksiEnum: string
             self::POKOK => 'Simpanan Pokok',
             self::WAJIB => 'Simpanan Wajib',
             self::TARIK => 'Tarik Tunai',
-            self::PINJAMAN => 'Pinjaman'
+            self::PINJAMAN => 'Pinjaman',
+            self::SIMPANAN => 'Simpanan'
         };
     }
 
@@ -37,7 +39,8 @@ enum TransaksiEnum: string
             self::POKOK => 'POKOK',
             self::WAJIB => 'WAJIB',
             self::TARIK => 'TARIK',
-            self::PINJAMAN => 'LOAN'
+            self::PINJAMAN => 'LOAN',
+            self::SIMPANAN => 'SAVE'
         };
     }
 }

@@ -23,6 +23,7 @@ class Transaksi extends Model
         'angsuran_ke',
         'tenor_total',
         'keterangan',
+        'angsuran_id'
     ];
 
     // Cast data tipe data agar otomatis berubah tipe

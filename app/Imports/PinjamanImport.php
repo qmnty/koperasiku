@@ -38,8 +38,10 @@ class PinjamanImport implements ToModel, WithHeadingRow
         $idAnggota = DB::table('anggotas')->where('no_anggota', $noAnggota)->select('id')->first();
 
         // 1. Simpan Anggota Terlebih Dahulu
+        $angsuranid = TransaksiEnum::PINJAMAN->prefix() . Str::after($no_kontrak, 'LOAN');
+        $totalBayar = ( $this->cleanNumber($row['angsur']) + ($this->cleanNumber($row['realisasi']*0.01)) );
         $pinjaman = Pinjaman::create([
-            'no_kontrak'     => TransaksiEnum::PINJAMAN->prefix() . Str::after($no_kontrak, 'LOAN'),
+            'no_kontrak'     => $angsuranid,
             'anggota_id'     => $idAnggota->id ?? null,
             'tanggal_cair'   => $tanggal_cair,
             'nominal_realisasi' => $this->cleanNumber($row['realisasi']),
@@ -49,26 +51,42 @@ class PinjamanImport implements ToModel, WithHeadingRow
             'angsuran_per_bulan' => $this->cleanNumber($row['angsur']),
             'jatuh_tempo'    => $jatuh_tempo,
             'sisa_tenor'     => $row['tenor'] - $row['angsurke'],
-            'total_bayar'    => $this->cleanNumber($row['angsur']) * $row['angsurke']
+            'total_bayar'    => $totalBayar * $row['angsurke']
+        ]);
+
+        Transaksi::create([
+            'anggota_id'        => $idAnggota->id ?? -1,
+            'pinjaman_id'       => $pinjaman->id, 
+            'kode_transaksi'    => TransaksiEnum::PENCAIRAN->prefix() . 
+                            now()->format('YmdHisv') .
+                            ($idAnggota->id ?? '0') .
+                            uniqid(),
+            'tanggal_transaksi' => $tanggal_cair, // Bisa disesuaikan
+            'jenis_transaksi'   => TransaksiEnum::PENCAIRAN->value,
+            'debit'             => 0, 
+            'kredit'            => $row['plafond'],
+            'keterangan'        => "Pencairan pinjaman (Import Data)"
         ]);
 
         if ($row['angsurke'] > 0) {
             foreach (range(1, $row['angsurke']) as $ke) {
                 $nominalPerBulan = $this->cleanNumber($row['angsur']);
-                $uniqueCode = TransaksiEnum::ANGSURAN->prefix() . "-" . 
+                $uniqueCode = TransaksiEnum::ANGSURAN->prefix() . 
                             now()->format('YmdHisv') .
                             $ke . 
-                            ($idAnggota->id ?? '0');
+                            ($idAnggota->id ?? '0') .
+                            uniqid();
 
                 Transaksi::create([
                     'anggota_id'        => $idAnggota->id ?? -1,
                     'pinjaman_id'       => $pinjaman->id, 
                     'kode_transaksi'    => $uniqueCode,
                     'tanggal_transaksi' => $tanggal_cair, // Bisa disesuaikan
-                    'jenis_transaksi'   => TransaksiEnum::ANGSURAN->label(),
-                    'debit'             => $nominalPerBulan, 
+                    'jenis_transaksi'   => TransaksiEnum::ANGSURAN->value,
+                    'debit'             => $totalBayar, 
                     'kredit'            => 0,
                     'keterangan'        => "Pembayaran Angsuran ke-{$ke} (Import Data)",
+                    'angsuran_id'       => $angsuranid
                 ]);
             }
         }

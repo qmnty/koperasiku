@@ -44,6 +44,18 @@
       <button v-if="user.role !== 'staff'" @click="modals.loan = true" class="cursor-pointer bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex gap-2 items-center hover:bg-emerald-700"><i class="fa-solid fa-plus"></i> Baru</button>
     </div>
   </div>
+  <div class="relative mb-4">
+    <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+      <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
+    </span>
+    <input 
+      v-model="searchQuery" 
+      @input="handleSearch"
+      type="text" 
+      placeholder="Cari nama atau ID..." 
+      class="pl-10 pr-4 py-2 border bg-white border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full lg:w-64"
+    />
+  </div>
   <div v-if="isLoading" class="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/20 backdrop-blur-sm">
     <div class="bg-white p-6 rounded-2xl shadow-2xl border border-slate-100 flex flex-col items-center gap-3">
       <i class="fa-solid fa-circle-notch animate-spin text-emerald-600 text-3xl"></i>
@@ -64,7 +76,7 @@
         <tr v-for="l in loans" :key="l.id" @click="openDetail(l)" class="hover:bg-slate-50 cursor-pointer">
           <td class="p-4 font-bold">
             {{ l.nama }}
-            <div class="text-[10px] text-slate-400 font-mono">{{ l.id }}</div>
+            <div class="text-[10px] text-slate-400 font-mono">{{ l.no_kontrak }}</div>
           </td>
           <td class="p-4">
             <div class="font-bold text-emerald-600">{{ formatIDR(l.realisasi) }}</div>
@@ -80,6 +92,45 @@
         <tr v-if="loans.length === 0"><td colspan="4" class="p-12 text-center text-slate-300 italic">Belum ada pinjaman aktif</td></tr>
       </tbody>
     </table>
+    <div class="flex gap-1 items-center py-4">
+      <div class="text-center">
+
+      </div>
+      <button 
+        @click="changePage(pagination.current_page - 1)" 
+        :disabled="pagination.current_page === 1"
+        class="px-3 py-1 cursor-pointer rounded-lg border border-slate-200 text-xs font-bold disabled:opacity-30 hover:bg-slate-100"
+      >
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+
+      <template v-for="page in pagination.last_page" :key="page">
+        <button 
+          v-if="
+            page === 1 || 
+            page === pagination.last_page || 
+            (page >= pagination.current_page - 1 && page <= pagination.current_page + 1)
+          "
+          @click="changePage(page)"
+          :class="['px-3 py-1 rounded-lg cursor-pointer border text-xs font-bold transition', 
+            pagination.current_page === page 
+              ? 'bg-emerald-600 text-white border-emerald-600' 
+              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100']"
+        >
+          {{ page }}
+        </button>
+        
+        <span v-else-if="page === pagination.current_page - 2 || page === pagination.current_page + 2" class="px-2 text-slate-400">...</span>
+      </template>
+
+      <button 
+        @click="changePage(pagination.current_page + 1)" 
+        :disabled="pagination.current_page === pagination.last_page"
+        class="px-3 py-1 rounded-lg cursor-pointer border border-slate-200 text-xs font-bold disabled:opacity-30 hover:bg-slate-100"
+      >
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
   </div>
   <PinjamanAdd
     :modals="modals"
@@ -123,6 +174,14 @@ const isLoadingHistory = ref(false);
 const onImport = ref(false)
 const exporting = ref(false)
 const fileInput = ref(null);
+const searchQuery = ref('')
+const pagination = ref({
+  current_page: 1,
+  last_page: 1,
+  total: 0,
+  from: 0,
+  to: 0
+})
 
 function addLoans(newLoan)
 {
@@ -148,7 +207,7 @@ const openDetail = async (loan) => {
   
   try {
     // 4. Ambil data riwayat dari API
-    const response = await api.get(`pinjaman/riwayat/${loan.id}`);
+    const response = await api.get(`pinjaman/riwayat/${loan.no_kontrak}`);
     
     // 5. Masukkan ke state untuk diteruskan ke komponen PinjamanDetailModal
     loanHistory.value = response.data.history || response.data;
@@ -159,18 +218,51 @@ const openDetail = async (loan) => {
   }
 };
 
-async function fetchPinjaman() {
+async function fetchPinjaman(page = 1) {
   isLoading.value = true;
   try {
-    const response = await api.get('pinjaman');
-    // Sesuaikan dengan struktur return Laravel (biasanya response.data.data atau response.data)
-    loans.value = response.data.data || response.data;
+    const response = await api.get('pinjaman', {
+      params: {
+        page: page,
+        search: searchQuery.value
+      }
+    });
+    
+    // Asumsi Laravel mengembalikan: response.data.data (array hasil) dan fields pagination lainnya
+    if (response.data.data && Array.isArray(response.data.data)) {
+        loans.value = response.data.data;
+        pagination.value = {
+            current_page: response.data.current_page,
+            last_page: response.data.last_page,
+            total: response.data.total,
+            from: response.data.from,
+            to: response.data.to
+        };
+    } else {
+        // Jika backend tidak pakai pagination standar Laravel
+        loans.value = response.data;
+    }
   } catch (error) {
     console.error("Gagal mengambil data anggota:", error);
   } finally {
     isLoading.value = false;
   }
 }
+
+const changePage = (page) => {
+  if (page >= 1 && page <= pagination.value.last_page) {
+    fetchPinjaman(page);
+  }
+};
+
+// Handler Search (dengan simple debounce)
+let searchTimeout;
+const handleSearch = () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    fetchPinjaman(1); // Kembali ke hal 1 saat cari
+  }, 500);
+};
 
 const importPinjamanConfirmation = async () => {
     if (onImport.value) return;
