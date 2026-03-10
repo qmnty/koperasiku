@@ -11,8 +11,12 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
-Route::get('/', [HomeController::class, 'index'])->name('index');
-Route::post('/login', [AuthController::class, 'login'])->name('login');
+Route::middleware('guest')->group(function () {
+    // Halaman Login (GET)
+    Route::get('/login', [HomeController::class, 'index'])->name('login'); 
+    // Proses Login (POST)
+    Route::post('/login', [AuthController::class, 'login']);
+});
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/npm-build', function () {
@@ -24,6 +28,7 @@ Route::middleware(['auth'])->group(function () {
             : 'Build Gagal: ' . $result->errorOutput();
     })->middleware('role:admin');
 
+    Route::get('/', [HomeController::class, 'index'])->name('index');
     //Anggota
     Route::prefix('anggota')->group(function () {
         Route::get('/', [AnggotaController::class, 'index'])->name('anggota.index');
