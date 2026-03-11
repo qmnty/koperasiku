@@ -17,6 +17,22 @@
           :value="savingForm.tipe === 'wajib' ? 30000 : savingForm.nominal"
           class="w-full border border-slate-200 rounded-2xl py-5 px-6 text-xl font-black bg-slate-50 text-emerald-600 focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed"
         >
+        <div class="grid grid-cols-2 gap-2">
+          <button 
+            type="button"
+            @click="savingForm.paymentMethod = 'cash'"
+            :class="['py-3 cursor-pointer rounded-xl text-xs font-bold transition', savingForm.paymentMethod === 'cash' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500']"
+          >
+            <i class="fa-solid fa-money-bill-wave mr-2"></i> CASH
+          </button>
+          <button 
+            type="button"
+            @click="savingForm.paymentMethod = 'transfer'"
+            :class="['py-3 cursor-pointer rounded-xl text-xs font-bold transition', savingForm.paymentMethod === 'transfer' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500']"
+          >
+            <i class="far fa-credit-card mr-2"></i> TRANSFER
+          </button>
+        </div>
         <button type="submit" class="w-full cursor-pointer py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-lg">SIMPAN SETORAN</button>
       </form>
     </div>
@@ -28,7 +44,7 @@ import api from '@/lib/api';
 import { ref } from 'vue';
 import { reactive } from 'vue';
 
-const savingForm = reactive({ memberId: '', tipe: 'wajib', nominal: 30000 });
+const savingForm = reactive({ memberId: '', tipe: 'wajib', nominal: 30000, paymentMethod: 'cash' });
 const props = defineProps({
   modals: Object,
   memberId: Number
@@ -41,7 +57,8 @@ const handleSaving = async() => {
     let res = await api.post('anggota/simpanan/store', {
       memberId: props.memberId,
       nominal: nominal,
-      tipe: savingForm.tipe
+      tipe: savingForm.tipe,
+      paymentMethod: savingForm.paymentMethod
     });
     if(res.status !== 200 && res.status !== 201) throw new Error(res.data.message);
     if (props.memberId) {

@@ -11,8 +11,24 @@
         <h1 class="text-2xl font-extrabold text-slate-800">Data Anggota</h1>
         <p class="text-xs text-slate-500 font-medium">Total: {{ memberList.length }} Anggota ditemukan</p>
       </div>
-      <div v-if="user.role === 'admin'">
-        <Button 
+      <div v-if="user.role === 'admin'" class="flex flex-row items-start gap-1">
+        <TooltipButton
+          @click="importAnggotaConfirmation" text="Import Angsuran"
+          class="bg-cyan-700 text-lg p-0.5 text-white rounded-lg hover:bg-cyan-400 cursor-pointer"
+          :base-class="'ml-2'"
+        >
+          <i class="fas fa-upload"></i>
+          <span class="text-[10px] font-medium mt-1">Import</span>
+        </TooltipButton>
+        <TooltipButton
+          @click="exportAnggota" text="Export to xlsx"
+          class="bg-amber-600 text-lg p-0.5 text-white rounded-lg hover:bg-amber-400 cursor-pointer"
+          :base-class="'ml-2'"
+        >
+          <i class="fas fa-download"></i>
+          <span class="text-[10px] font-medium mt-1">Export</span>
+        </TooltipButton>
+        <!-- <Button 
           @click="importAnggotaConfirmation" 
           :disabled="onImport"
           class="mt-4 m-2 lg:mt-0 cursor-pointer bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition flex items-center gap-2"
@@ -23,7 +39,7 @@
           <template v-else>
             Import Anggota
           </template>
-        </Button>
+        </Button> -->
 
         <input 
             type="file" 
@@ -33,7 +49,7 @@
             @change="handleFileChange" 
         />
       </div>
-      <Button 
+      <!-- <Button 
         @click="exportAnggota" 
         class="mt-4 lg:mt-0 ml-2 cursor-pointer bg-cyan-600 text-white rounded-xl text-xs font-bold hover:bg-cyan-700 transition flex items-center gap-2"
       >
@@ -43,7 +59,7 @@
         <template v-else>
           <i class="fa-solid fa-file-lines text-xl"></i>
         </template>
-      </Button>
+      </Button> -->
     </div>
     
     <div class="flex flex-wrap gap-2 w-full lg:w-auto">
@@ -84,7 +100,6 @@
           class="w-full sm:w-64 border-slate-200 pl-10 pr-4 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition bg-white"
         >
       </div>
-
       <button v-if="user.role !== 'staff'" @click="modals.member = true" class="bg-emerald-600 text-white px-4 py-2 rounded-xl cursor-pointer hover:bg-emerald-700 transition flex items-center gap-2 font-bold text-sm">
         <i class="fa-solid fa-plus text-xs"></i>
         <!-- <span class="hidden sm:inline">Anggota</span> -->
@@ -120,7 +135,18 @@
             </span>
             <p class="text-[10px] text-slate-400 font-mono">ID: {{ m.no_anggota }}</p>
           </div>
-          <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded">Kelompok: {{ m.pj }}</span>
+          <div class="flex flex-col gap-2 items-end">
+            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
+              Kelompok: {{ m.pj }}
+            </span>
+            
+            <button 
+              class="bg-red-500 text-white text-base text-right px-2 py-1 rounded cursor-pointer hover:bg-red-600 transition"
+              @click="deleteAnggota(m)"
+            >
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
         </div>
         <div class="text-xs space-y-2 text-slate-500">
           <div class="flex justify-between border-t border-slate-300 pt-2"><span>Wajib</span><span class="text-slate-900 font-bold">{{ formatIDR(m.wajib) }}</span></div>
@@ -183,7 +209,7 @@
   />
   <AnggotaAdd
     :modals="props.modals"
-    @success="fetchAnggota"
+    @success="AnggotaAddSuccess"
   />
 </template>
 
@@ -199,6 +225,7 @@ import AnggotaAdd from './AnggotaAdd.vue';
 import Button from '@/components/ui/button/Button.vue';
 import Dropdown from '@/components/Dropdown.vue';
 import { debounce } from 'lodash';
+import TooltipButton from '@/components/TooltipButton.vue';
 
 const pagination = ref({
   current_page: 1,
@@ -262,6 +289,43 @@ const filteredMembers = computed(() => {
   });
 });
 
+function deleteAnggota(item) {
+  Swal.fire({
+    title: 'Konfirmasi Hapus',
+    text: "Anda yakin ingin menghapus anggota ini?",
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Hapus',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#ef4444', // Red-600
+    borderRadius: '1.5rem'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      api.delete(`/anggota/${item.id}`).then(() => {
+        fetchAnggota().then(() => {
+          Swal.fire({
+            icon: 'success',
+            toast: true,
+            timer: 2500,
+            timerProgressBar: true,
+            text: 'Anggota berhasil dihapus',
+            showConfirmButton: false
+          })
+        })
+      })
+    }
+  }).catch((error) => {
+    Swal.fire({
+      icon: 'error',
+      title: 'Oops...',
+      text: 'Something went wrong!',
+      toast: true,
+      timer: 2500,
+      timerProgressBar: true
+    })
+  })
+}
+
 const debouncedFetch = debounce((page) => {
   fetchAnggota(page);
 }, 1000);
@@ -269,6 +333,19 @@ const debouncedFetch = debounce((page) => {
 watch([searchTerm, selectedGroup, selectedStatus], () => {
   debouncedFetch(1);
 });
+
+function AnggotaAddSuccess() {
+  Swal.fire({
+    icon: 'success',
+    toast: true,
+    timer: 2500,
+    timerProgressBar: true,
+    text: "Anggota baru berhasil disimpan",
+    showConfirmButton: false
+  })
+
+  fetchAnggota()
+}
 
 const importAnggotaConfirmation = async () => {
     if (onImport.value) return;
@@ -402,6 +479,15 @@ const setorOnSuccess = (payload) => {
   if (index !== -1) {
     memberList.value[index][payload.tipe] += payload.nominal;
   }
+  Swal.fire({
+    icon: 'success',
+    toast: true,
+    position: 'top-end',
+    text: 'Setoran berhasil disimpan',
+    showConfirmButton: false,
+    timer: 2500,
+    timerProgressBar: true
+  })
 };
 
 async function showMemberRiwayat(id) {

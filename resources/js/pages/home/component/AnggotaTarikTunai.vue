@@ -15,6 +15,16 @@
         <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Total Dana Tersedia</p>
         <h3 class="text-2xl font-black text-slate-800">{{ formatIDR(totalSaldo) }}</h3>
       </div>
+      <div class="grid grid-cols-2 gap-3 mb-6">
+        <div class="bg-slate-50 rounded-3xl p-4 border border-slate-100">
+          <p class="text-[9px] font-black text-slate-400 uppercase">Simpanan Sukarela</p>
+          <h3 class="text-lg font-black text-emerald-600">{{ formatIDR(currentMember?.sukarela || 0) }}</h3>
+        </div>
+        <div class="bg-slate-50 rounded-3xl p-4 border border-slate-100">
+          <p class="text-[9px] font-black text-slate-400 uppercase">Simpanan Lainnya</p>
+          <h3 class="text-lg font-black text-slate-600">{{ formatIDR(totalSimpananTetap) }}</h3>
+        </div>
+      </div>
 
       <form @submit.prevent="handleSaving" class="space-y-6">
         <div class="space-y-3">
@@ -42,6 +52,11 @@
               class="w-full border-2 border-slate-100 rounded-2xl py-5 px-6 text-2xl font-black bg-white text-rose-600 focus:border-rose-500 outline-none transition disabled:bg-slate-50 disabled:text-rose-400"
             >
             <span v-if="isAllSelected" class="absolute right-6 top-1/2 -translate-y-1/2 bg-rose-100 text-rose-600 text-[10px] font-black px-3 py-1 rounded-lg">MAX</span>
+          </div>
+          <div class="mt-2 text-[10px] text-slate-400 bg-slate-50 p-3 rounded-xl border border-slate-100 italic">
+            <i class="fa-solid fa-circle-info mr-1 text-emerald-500"></i> 
+            Catatan: Penarikan dana hanya dapat dilakukan dari <strong>Simpanan Sukarela</strong>. 
+            Simpanan Pokok dan Wajib tidak dapat ditarik selama keanggotaan aktif.
           </div>
         </div>
 
@@ -92,13 +107,19 @@ watch(isAllSelected, (val) => {
 
 watch(() => savingForm.nominal, (newVal) => {
   const cleaned = String(newVal).replace(/[^0-9]/g, '');
-  let finalVal = Number(cleaned);
-  if (finalVal > totalSaldo.value) {
-    finalVal = totalSaldo.value;
+  if(isAllSelected.value) {
+    let finalVal = Number(cleaned);
+    if (finalVal > totalSaldo.value) {
+      finalVal = totalSaldo.value;
+    }
+    savingForm.nominal = finalVal;
+    isAllSelected.value = newVal === totalSaldo.value && totalSaldo.value > 0;
+  } else {
+    savingForm.nominal = Number(cleaned);
+    if(savingForm.nominal > Number(props.currentMember.sukarela)) {
+      savingForm.nominal = Number(props.currentMember.sukarela);
+    }
   }
-  savingForm.nominal = finalVal;
-
-  isAllSelected.value = newVal === totalSaldo.value && totalSaldo.value > 0;
 });
 
 // Hitung total saldo yang bisa ditarik
@@ -109,6 +130,13 @@ const totalSaldo = computed(() => {
          Number(props.currentMember.pokok) +
          Number(props.currentMember.khusus);
 });
+
+const totalSimpananTetap = computed(() => {
+  if (!props.currentMember) return 0;
+  return Number(props.currentMember.wajib) + 
+         Number(props.currentMember.pokok) +
+         Number(props.currentMember.khusus);
+})
 
 // Cek apakah penarikan akan mengosongkan saldo
 const isFullWithdrawal = computed(() => {

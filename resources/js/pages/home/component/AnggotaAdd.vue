@@ -61,6 +61,7 @@
 
 <script setup>
 import api from '@/lib/api';
+import Swal from 'sweetalert2';
 import { reactive } from 'vue';
 
 const props = defineProps({
@@ -88,7 +89,14 @@ const handleAddMember = () => {
     emit('success');
     Object.assign(newMember, { nama: '', pj: '', pokok: 0, wajibAwal: 30000 });
   } catch (error) {
-    console.log(error);
+    Swal.fire({
+      icon: 'error',
+      toast: true,
+      timer: 2500,
+      timerProgressBar: true,
+      text: error,
+      showConfirmButton: false
+    })
   }
 };
 </script>

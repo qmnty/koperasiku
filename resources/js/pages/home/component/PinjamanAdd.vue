@@ -13,14 +13,17 @@
           subKey="pj"
           subLabelPrefix="PJ: "
           :searchFields="['nama', 'pj', 'no_anggota']"
+          @change="checkAnggotaPinjaman"
+          @search="fetchAnggotaSearch"
         />
         <div class="grid grid-cols-2 gap-4 mb-4">
           <div class="flex flex-col gap-2">
             <label for="realisasi" class="text-sm font-semibold text-slate-600 ml-1">Nominal Realisasi</label>
             <input 
               id="realisasi"
-              v-model="loanForm.realisasi" 
-              type="number" 
+              :value="formattedDisplay"
+              @input="onMoneyInput"
+              type="text" 
               placeholder="Contoh: 5000000" 
               required 
               class="w-full border-2 border-slate-100 rounded-2xl p-4 py-2 outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 bg-slate-50 font-bold"
@@ -68,7 +71,7 @@
                   {{ formatIDR(estimasiAngsuran) }}
                 </h4>
                 <p class="text-[9px] text-emerald-600 mt-1 font-medium">
-                  Pokok: {{ formatIDR(loanForm.realisasi / loanForm.tenor) }} + Jasa
+                  Pokok: {{ formatIDR(loanForm.realisasi / loanForm.tenor) }} + Bunga
                 </p>
               </div>
               <div class="text-right">
@@ -79,7 +82,14 @@
             </div>
           </div>
         </div>
-        <button type="submit" class="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black hover:bg-emerald-700 transition cursor-pointer">Submit</button>
+        <button type="submit" 
+          :class="[
+            'w-full py-4 bg-emerald-600 text-white rounded-2xl font-black hover:bg-emerald-700 transition cursor-pointer',
+            isMemberHasPinjaman ? 'bg-gray-500! cursor-not-allowed!' : ''
+          ]"
+        >
+          Submit
+        </button>
       </form>
     </div>
   </div>
@@ -91,6 +101,7 @@ import { computed, onMounted, ref } from 'vue';
 import { reactive } from 'vue';
 import { formatIDR } from '@/lib/global';
 import Dropdown from '@/components/Dropdown.vue';
+import Swal from 'sweetalert2';
 
 
 const props = defineProps({
@@ -108,18 +119,60 @@ const emit = defineEmits(['success']);
 
 const members = ref([])
 
+const isMemberHasPinjaman = ref(false)
+
 onMounted(() => {
   fetchAnggota();
 })
+
+const formattedDisplay = computed(() => {
+  return loanForm.realisasi > 0 ? formatIDR(loanForm.realisasi) : '';
+})
+
+const onMoneyInput = (event) => {
+  let val = event.target.value;
+  const cleanValue = val.replace(/[^0-9]/g, '');
+  loanForm.realisasi = cleanValue === '' ? 0 : parseInt(cleanValue, 10);
+  event.target.value = cleanValue === '' ? '' : new Intl.NumberFormat('id-ID').format(cleanValue);
+};
 
 const estimasiAngsuran = computed(() => {
   if (!loanForm.realisasi || !loanForm.tenor) return 0;
   
   const pokok = Number(loanForm.realisasi) / Number(loanForm.tenor);
-  const jasa = Number(loanForm.realisasi) * 0.015; // Contoh jasa 1.5% flat
+  const jasa = Number(loanForm.realisasi) * 0.01; // Contoh jasa 1% flat
   
   return pokok + jasa;
 });
+
+const fetchAnggotaSearch = async (query) => {
+  const response = await api.get(`/anggota/search`, {
+    params: { 
+      search: query
+    }
+  });
+  members.value = response.data; 
+};
+
+async function checkAnggotaPinjaman() {
+  try {
+    const res = await api.get('anggota/pinjaman/check', {
+      params: {
+        member_id: loanForm.memberId  
+      }
+    })
+    if(res.status === 200) {
+      isMemberHasPinjaman.value = res.data.has_pinjaman
+    }
+  }
+  catch (error) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Oops...',
+      text: 'Something went wrong!',
+    })
+  }
+}
 
 async function fetchAnggota() {
   try {
@@ -136,6 +189,18 @@ async function fetchAnggota() {
   }
 }
 const handleCreateLoan = async () => {
+  if(isMemberHasPinjaman.value) {
+    return Swal.fire({
+      icon: 'error',
+      title: 'Oops...',
+      text: 'Anggota ini sudah memiliki pinjaman!',
+      toast: true,
+      timer: 2500,
+      timerProgressBar: true,
+      showConfirmButton: false
+    })
+  }
+
   const realisasi = Number(loanForm.realisasi);
   const tenor = Number(loanForm.tenor);
   
@@ -155,11 +220,27 @@ const handleCreateLoan = async () => {
     });
 
     if (res.status !== 200 && res.status !== 201) {
-      throw new Error(res.data.message || 'Gagal membuat pinjaman');
+      Swal.fire({
+        icon: 'error',
+        toast: true,
+        timer: 2500,
+        timerProgressBar: true,
+        text: res.data.message,
+        showConfirmButton: false,
+        position: 'top-end'
+      });
     }
 
     if(res.data.gagal) {
-      throw new Error(res.data.message)
+      Swal.fire({
+        icon: 'error',
+        toast: true,
+        timer: 2500,
+        timerProgressBar: true,
+        text: res.data.message,
+        showConfirmButton: false,
+        position: 'top-end'
+      });
     }
 
     emit('success', res.data.loan)
@@ -175,8 +256,15 @@ const handleCreateLoan = async () => {
     });
     
   } catch (error) {
-    console.error(error);
-    alert('Gagal membuat pinjaman: ' + error.message);
+    Swal.fire({
+      icon: 'error',
+      toast: true,
+      timer: 2500,
+      timerProgressBar: true,
+      text: error.message,
+      showConfirmButton: false,
+      position: 'top-end'
+    });
   }
 };
 </script>

@@ -9,6 +9,7 @@ use App\Imports\AnggotaImport;
 use App\Models\Anggota;
 use App\Models\Pinjaman;
 use App\Models\Transaksi;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -18,6 +19,41 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class AnggotaController extends Controller
 {
+    public function search(Request $request) {
+        $searchTerm = $request->input('search');
+        $data = DB::table('anggotas')
+            ->select(
+                'id',
+                'no_anggota',
+                'nama_lengkap as nama',
+                'pj'
+            )
+            ->where('status', 'aktif')
+            ->where('no_anggota', 'like', '%' . $searchTerm . '%')
+            ->orWhere('nama_lengkap', 'like', '%' . $searchTerm . '%')
+            ->limit(10)
+            ->get();
+
+        return response()->json($data);
+    }
+
+    public function delete(Request $request, $anggotaId) {
+        try {
+            $anggota = DB::table('anggotas')
+                ->where('id', $anggotaId)
+                ->where('status', 'aktif');
+
+            if (!$anggota->exists()) {
+                return response()->json(['error' => 'Anggota tidak ditemukan'], 404);
+            }
+
+            //Eksekusi delete
+            $anggota->delete();
+            return response()->json(['success' => true]);
+        } catch (Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
     public function index(Request $request)
     {
         // Gunakan DB::table atau Model Anggota
@@ -67,6 +103,23 @@ class AnggotaController extends Controller
         $anggotas = $query->paginate($perPage);
 
         return response()->json($anggotas);
+    }
+
+    public function checkAnggotaPinjaman(Request $request) {
+        try {
+            $anggota = DB::table('pinjamans')
+                ->where('anggota_id', $request->member_id)
+                ->where('status', 'aktif')
+                ->orWhere('total_bayar', '>=', 'total_tagihan')
+                ->exists();
+
+            return response()->json([
+                'has_pinjaman' => $anggota
+            ]);
+
+        } catch(Exception $e) {
+            return response()->json(['message' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
+        }
     }
 
     public function get_pj()
@@ -133,7 +186,7 @@ class AnggotaController extends Controller
             $nextSequence = str_pad($urutanTahunIni + 1, 3, '0', STR_PAD_LEFT);
 
             // 4. Gabungkan Format: PREFIX-26001
-            $noAnggota = AnggotaEnum::ANGGOTA->prefix() . "-" . $tahunSekarang . $nextSequence;
+            $noAnggota = AnggotaEnum::ANGGOTA->prefix() . $tahunSekarang . $nextSequence;
             // 4. Simpan data anggota
             $anggota = Anggota::create([
                 'no_anggota' => $noAnggota,
@@ -209,6 +262,7 @@ class AnggotaController extends Controller
                 'a.saldo_pokok',
                 'a.saldo_wajib',
                 'a.saldo_khusus',
+                't.payment_method',
                 // SUM(debit) adalah uang masuk, SUM(kredit) uang keluar
                 // Hitung total saldo sukarela dari transaksi masuk - keluar
                 DB::raw('IFNULL(SUM(t.debit), 0) - IFNULL(SUM(t.kredit), 0) as total_sukarela')
@@ -236,6 +290,7 @@ class AnggotaController extends Controller
                 'memberId' => 'required|exists:anggotas,id',
                 'tipe' => 'required|in:pokok,wajib,sukarela,khusus', // Validasi tipe
                 'nominal' => 'required|numeric|min:1',
+                'paymentMethod' => 'required',
             ]);
 
             $member = DB::table('anggotas')->where('id', $validated['memberId'])->first();
@@ -258,6 +313,7 @@ class AnggotaController extends Controller
                     'debit' => (int)$validated['nominal'], // Uang masuk
                     'kredit' => 0,
                     'keterangan' => 'Setoran Simpanan ' . ucfirst($validated['tipe']),
+                    'payment_method' => $validated['paymentMethod']
                 ]);
 
                 // 2. Update saldo di tabel anggotas

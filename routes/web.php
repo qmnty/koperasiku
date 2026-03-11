@@ -32,6 +32,7 @@ Route::middleware(['auth'])->group(function () {
     //Anggota
     Route::prefix('anggota')->group(function () {
         Route::get('/', [AnggotaController::class, 'index'])->name('anggota.index');
+        Route::get('/search', [AnggotaController::class, 'search'])->name('anggota.search');
         Route::get('/pj', [AnggotaController::class, 'get_pj'])->name('anggota.pj');
         Route::post('/import', [AnggotaController::class, 'import'])->name('anggota.import');
         Route::get('/riwayat-transaksi/{anggotaId}', [AnggotaController::class, 'showRiwayatTransaksi'])->name('anggota.riwayat-transaksi');
@@ -43,6 +44,10 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/store', [AnggotaController::class, 'store'])->name('anggota.store');
             Route::post('/pinjaman/store', [AnggotaController::class, 'storePinjaman'])->name('anggota.pinjaman.store');
         });
+        Route::middleware('role:admin')->group(function () {
+            Route::delete('/{id}', [AnggotaController::class, 'delete'])->name('anggota.delete');
+        });
+        Route::get('pinjaman/check', [AnggotaController::class, 'checkAnggotaPinjaman'])->name('anggota.pinjaman.check');
         Route::get('/export', [AnggotaController::class, 'export'])->name('anggota.export');
     });
     
@@ -51,8 +56,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/detail/{id}', [PinjamanController::class, 'detail'])->name('pinjaman.detail');
         Route::post('/bayar', [PinjamanController::class, 'bayar'])->name('pinjaman.bayar');
         Route::get('/riwayat/{id}', [PinjamanController::class, "history"])->name('pinjaman.history');
-        Route::post('/import', [PinjamanController::class, 'import'])->name('pinjaman.import');
+        Route::middleware('role:admin')->group(function () {
+            Route::post('/import', [PinjamanController::class, 'import'])->name('pinjaman.import');
+            Route::post('/angsuran/import', [PinjamanController::class, 'importAngsuran'])->name('pinjaman.angsuran.import');
+        });
         Route::get('/export', [PinjamanController::class, 'export'])->name('pinjaman.export');
+        Route::get('search', [PinjamanController::class, 'search'])->name('pinjaman.search');
     });
     
     Route::prefix('transaksi')->group(function () {

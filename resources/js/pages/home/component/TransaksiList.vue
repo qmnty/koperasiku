@@ -31,10 +31,16 @@
 
       <div class="flex flex-col gap-1">
         <label class="text-[10px] font-bold text-slate-400 ml-2 uppercase">Kelompok</label>
-        <select v-model="filters.kelompok" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none appearance-none cursor-pointer">
+        <!-- <select v-model="filters.kelompok" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none appearance-none cursor-pointer">
           <option value="">Semua</option>
           <option v-for="g in groups" :key="g" :value="g">{{ g }}</option>
-        </select>
+        </select> -->
+        <Dropdown 
+          baseClass="bg-white!"
+          v-model="filters.kelompok"
+          :options="groups"
+          placeholder="Cari PJ Kelompok..."
+        />
       </div>
 
       <div class="flex flex-col gap-1">
@@ -54,8 +60,7 @@
           <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
         </span>
         <input 
-          v-model="search" 
-          @input="handleSearch"
+          v-model="filters.search" 
           type="text" 
           placeholder="Cari nama..." 
           class="pl-10 pr-4 py-2 border bg-white border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full lg:w-64"
@@ -74,8 +79,13 @@
         <div v-for="t in transactions" :key="t.id" class="bg-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center shadow-sm">
           <div class="flex items-center gap-4">
             <div :class="['p-3 rounded-xl', t.is_keluar ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600']">
-              <ArrowUpRight v-if="t.is_keluar" :size="20" />
-              <ArrowDownLeft v-else :size="20" />
+              <!-- <ArrowUpRight v-if="t.is_keluar" :size="20" />
+              <ArrowDownLeft v-else :size="20" /> -->
+              <i
+                :class="[
+                  t.payment_method === 'cash' ? 'fas fa-money-bill' : 'far fa-credit-card',
+                ]"
+              ></i>
             </div>
             <div>
               <div class="flex items-center gap-2">
@@ -144,6 +154,7 @@ import api from '@/lib/api';
 import { formatIDR } from '@/lib/global';
 import { ArrowUpRight, ArrowDownLeft } from 'lucide-vue-next';
 import debounce from 'lodash/debounce';
+import Dropdown from '@/components/Dropdown.vue';
 
 const kategori = ref([])
 const transactions = ref([])
@@ -188,6 +199,24 @@ async function handleExport() {
   }
 }
 
+async function fetchPJ()
+{
+  try {
+    const res = await api.get('anggota/pj')
+    if(res.data) {
+      groups.value = res.data
+        .map(item => ({
+          id: item.pj,   // Ambil nilai dari key 'pj'
+          nama: item.pj  // Gunakan nilai yang sama untuk label di dropdown
+        }))
+        // Opsional: Urutkan secara numerik jika PJ berupa angka
+        .sort((a, b) => parseInt(a.nama) - parseInt(b.nama));
+    }
+  } catch(e) {
+    console.log(e)
+  }
+}
+
 async function fetchTransaksi(page = 1) {
   loading.value = true;
   try {
@@ -198,10 +227,10 @@ async function fetchTransaksi(page = 1) {
     pagination.value = res.data;
     
     // Update daftar kelompok jika belum ada (hanya jika ingin dinamis dari data yang ada)
-    if (groups.value.length === 0) {
-       const uniqueGroups = [...new Set(res.data.map(item => item.kelompok))];
-       groups.value = uniqueGroups.sort();
-    }
+    // if (groups.value.length === 0) {
+    //    const uniqueGroups = [...new Set(res.data.data.map(item => item.kelompok))];
+    //    groups.value = uniqueGroups.sort();
+    // }
   } catch (e) {
     console.error(e);
   } finally {
@@ -234,5 +263,6 @@ watch(() => [filters.start_date, filters.end_date], () => {
 onMounted(() => {
   fetchTransaksi();
   fetchKategori()
+  fetchPJ()
 });
 </script>

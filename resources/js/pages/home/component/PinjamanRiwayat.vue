@@ -9,7 +9,12 @@
            class="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-emerald-200 transition">
         <div class="flex items-center gap-4">
           <div class="p-2 bg-white rounded-xl shadow-sm group-hover:bg-emerald-500 group-hover:text-white transition">
-            <i class="fa-solid fa-receipt text-sm"></i>
+            <i :class="[
+              'text-sm',
+              h.payment_method === 'cash' ? 'fas fa-money-bill' : 'far fa-credit-card'
+              ]"
+            >
+            </i>
           </div>
           <div>
             <p class="text-xs font-black text-slate-700">Angsuran Ke-{{ h.angsuran_ke }}</p>

@@ -47,7 +47,12 @@
                   'p-2 rounded-lg flex items-center justify-center', 
                   t.kredit > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'
                 ]">
-                <i :class="['fa-solid fa-arrow-down', t.kredit > 0 ? 'rotate-225' : 'rotate-45']" style="font-size: 14px;"></i>
+                <i
+                  :class="[
+                    t.payment_method === 'cash' ? 'fas fa-money-bill' : 'far fa-credit-card',
+                  ]"
+                ></i>
+                <!-- <i :class="['fa-solid fa-arrow-down', t.kredit > 0 ? 'rotate-225' : 'rotate-45']" style="font-size: 14px;"></i> -->
               </div>
               
               <div>

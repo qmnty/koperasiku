@@ -49,6 +49,7 @@
 </template>
 
 <script setup>
+import { debounce } from 'lodash';
 import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
@@ -106,9 +107,14 @@ const clearSelection = () => {
   isOpen.value = false;
 };
 
-const handleInput = () => {
-  if (searchQuery.value === '') {
-    emit('update:modelValue', '');
-  }
+const debouncedSearch = debounce((query) => {
+  emit('search', query);
+}, 300);
+
+const handleInput = (e) => {
+  const query = e.target.value;
+  if (query === '') emit('update:modelValue', '');
+  
+  debouncedSearch(query);
 };
 </script>

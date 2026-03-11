@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\TransaksiEnum;
 use App\Exports\PinjamanExport;
+use App\Imports\AngsuranImport;
 use App\Imports\PinjamanImport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,13 +27,14 @@ class PinjamanController extends Controller
                 'p.tenor',
                 'p.angsuran_per_bulan as pokok',
                 'p.tanggal_cair',
-                'p.jatuh_tempo as jatuhTempo',
+                DB::raw('DATE(p.jatuh_tempo) as jatuhTempo'),
                 'p.sisa_tenor as sisaTenor',
                 'p.total_bayar',
                 'p.total_tagihan',
                 'p.status'
             )
             ->where('p.status', '=', 'aktif')
+            ->whereColumn('p.total_bayar', '<', 'p.total_tagihan')
             ->orderBy('p.tanggal_cair', 'desc');
 
         // 2. Filter Search
@@ -72,6 +74,34 @@ class PinjamanController extends Controller
         return response()->json($pinjamanAktif);
     }
 
+    public function search(Request $request)
+    {
+        $search = $request->query('search');
+        $query = DB::table('pinjamans as p')
+            ->join('anggotas as a', 'p.anggota_id', '=', 'a.id')
+            ->select(
+                'p.no_kontrak as no_kontrak',
+                'a.nama_lengkap as nama',
+            )
+            ->where('p.status', '=', 'aktif')
+            ->orderBy('p.tanggal_cair', 'desc');
+
+        // 2. Filter Search
+        if ($request->filled('search')) {
+            $query->where(function($q) use ($search) {
+                $q->where('a.nama_lengkap', 'like', '%' . $search . '%')
+                ->orWhere('p.no_kontrak', 'like', '%' . $search . '%'); // Sesuaikan tabelnya (p atau a?)
+            });
+        }
+
+        // 3. Eksekusi Paginasi
+        // Ini akan mengembalikan objek LengthAwarePaginator
+        $data = $query->limit(20)->get();
+
+        // 5. Kembalikan response JSON (Struktur paginasi Laravel otomatis disertakan)
+        return response()->json($data);
+    }
+
     public function history($id)
     {
         try {
@@ -86,11 +116,12 @@ class PinjamanController extends Controller
             $formattedHistory = $history->map(function ($item, $key) use ($history) {
                 return [
                     'id' => $item->id,
-                    'tanggal_bayar' => date('d M Y', strtotime($item->created_at)),
+                    'tanggal_bayar' => date('d M Y', strtotime($item->tanggal_transaksi)),
                     'total_bayar' => (int) $item->debit, // Angsuran masuk ke kredit/kas masuk
                     'angsuran_ke' => count($history) - $key, // Hitung mundur angsuran
                     'keterangan' => $item->keterangan,
-                    'is_lunas' => str_contains(strtolower($item->keterangan), 'lunas')
+                    'is_lunas' => str_contains(strtolower($item->keterangan), 'lunas'),
+                    'payment_method' => $item->payment_method
                 ];
             });
 
@@ -119,7 +150,9 @@ class PinjamanController extends Controller
                 'pinjamans.sisa_tenor',
                 'pinjamans.total_bayar',
                 'pinjamans.total_tagihan',
-                'anggotas.nama_lengkap as nama_anggota'
+                'pinjamans.tenor',
+                'anggotas.nama_lengkap as nama_anggota',
+                'anggotas.no_anggota as no_anggota'
             )
             ->where('no_kontrak', $id)
             ->first();
@@ -131,6 +164,11 @@ class PinjamanController extends Controller
 
         // Hitung simulasi (1% bunga dari realisasi)
         $bungaEstimasi = $pinjaman->nominal_realisasi * 0.01;
+
+        $sisaTagihan = $pinjaman->total_tagihan - $pinjaman->total_bayar;
+        
+        $sisaTenor = (int)($sisaTagihan / ($pinjaman->angsuran_per_bulan + $bungaEstimasi));
+        $angsuranke = (int)($pinjaman->tenor - $sisaTenor) + 1;
         // $totalTagihan = $pinjaman->angsuran_per_bulan + $bungaEstimasi;
 
         return response()->json([
@@ -140,9 +178,13 @@ class PinjamanController extends Controller
             'pokok'          => (float) $pinjaman->angsuran_per_bulan,
             'sisa_tenor'     => $pinjaman->sisa_tenor,
             'bunga_estimasi' => $bungaEstimasi,
+            'nominal_realisasi' => $pinjaman->nominal_realisasi,
             // 'total_tagihan'  => $totalTagihan,
             'total_tagihan'  => $pinjaman->total_tagihan,
-            'total_bayar'    => $pinjaman->total_bayar
+            'total_bayar'    => $pinjaman->total_bayar,
+            'angsuranke'     => $angsuranke,
+            'sisaTenor'      => $sisaTenor,
+            'no_anggota'     => $pinjaman->no_anggota
         ]);
     }
 
@@ -154,6 +196,7 @@ class PinjamanController extends Controller
             'nominal_bunga' => 'required|numeric',
             // 'total_bayar' => 'required|numeric',
             'amount_paid' => 'required|numeric',
+            'payment_method' => 'required|string'
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -174,7 +217,8 @@ class PinjamanController extends Controller
                 'kredit' => 0,
                 'keterangan' => $validated['is_lunas'] ? "Pelunasan Pinjaman #{$loan->no_kontrak}" : "Angsuran Pinjaman #{$loan->no_kontrak}",
                 'created_at' => now(),
-                'angsuran_id' => $validated['loan_id']
+                'angsuran_id' => $validated['loan_id'],
+                'payment_method' => $validated['payment_method']
             ]);
 
             // 3. Update Status Pinjaman
@@ -222,6 +266,30 @@ class PinjamanController extends Controller
             
             return response()->json([
                 'message' => 'Data pinjaman berhasil diimport!'
+            ], 200);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function importAngsuran(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'file' => 'required|mimes:xlsx,xls,csv'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => 'File tidak valid'], 422);
+        }
+
+        try {
+            Excel::import(new AngsuranImport(), $request->file('file'));
+            
+            return response()->json([
+                'message' => 'Data angsuran berhasil diimport!'
             ], 200);
             
         } catch (\Exception $e) {

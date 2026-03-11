@@ -6,7 +6,7 @@
         <h1 class="text-2xl font-extrabold text-slate-800">Pinjaman Aktif</h1>
       </div>
       <div v-if="user.role === 'admin'">
-        <Button 
+        <!-- <Button 
           @click="importPinjamanConfirmation" 
           :disabled="onImport"
           class="mt-4 ml-2 lg:mt-0 cursor-pointer bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition flex items-center gap-2"
@@ -17,17 +17,56 @@
           <template v-else>
             Import Pinjaman
           </template>
-        </Button>
+        </Button> -->
+        <div class="flex flex-row items-start gap-1">
+          <TooltipButton
+            @click="importPinjamanConfirmation" text="Import Pinjaman"
+            class="bg-green-700 text-lg p-0.5 text-white rounded-lg hover:bg-green-400 cursor-pointer"
+            :base-class="'ml-2'"
+          >
+            <i class="fas fa-upload"></i>
+            <span class="text-[10px] font-medium mt-1">Pinjaman</span>
+          </TooltipButton>
+  
+          <TooltipButton
+            @click="importAngsuranConfirmation" text="Import Angsuran"
+            class="bg-cyan-700 text-lg p-0.5 text-white rounded-lg hover:bg-cyan-400 cursor-pointer"
+            :base-class="'ml-2'"
+          >
+            <i class="fas fa-upload"></i>
+            <span class="text-[10px] font-medium mt-1">Angsuran</span>
+          </TooltipButton>
 
+          <TooltipButton
+            @click="exportPinjaman" text="Export to xlsx"
+            class="bg-amber-600 text-lg p-0.5 text-white rounded-lg hover:bg-amber-400 cursor-pointer"
+            :base-class="'ml-2'"
+          >
+            <template v-if="exporting">
+              <i class="fas fa-spinner animate-spin"></i>
+            </template>
+            <template v-else>
+              <i class="fas fa-download text-xl"></i>
+            </template>
+            <span class="text-[10px] font-medium mt-1">Export</span>
+          </TooltipButton>
+        </div>
         <input 
             type="file" 
-            ref="fileInput" 
+            ref="fileAngsuranInput" 
             class="hidden" 
             accept=".xlsx, .xls" 
             @change="handleFileChange" 
         />
+        <input 
+            type="file" 
+            ref="fileAngsuranInput" 
+            class="hidden" 
+            accept=".xlsx, .xls" 
+            @change="handleFileAngsuranChange" 
+        />
       </div>
-      <Button 
+      <!-- <Button 
         @click="exportPinjaman" 
         class="mt-4 lg:mt-0 ml-2 cursor-pointer bg-cyan-600 text-white rounded-xl text-xs font-bold hover:bg-cyan-700 transition flex items-center gap-2"
       >
@@ -37,7 +76,7 @@
         <template v-else>
           <i class="fa-solid fa-file-lines text-xl"></i>
         </template>
-      </Button>
+      </Button> -->
     </div>
     <div class="flex gap-2">
       <button @click="modals.installment = true" class="cursor-pointer bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold flex gap-2 items-center hover:bg-amber-600"><i class="fa-solid fa-money-bill-1"></i> Bayar</button>
@@ -140,6 +179,7 @@
     :members = "members"
     :modals = "modals"
     :loans = "loans"
+    :initial-loan-id="targetLoanId"
     @success="bayarSuccess"
   />
   <PinjamanDetailModal 
@@ -147,6 +187,7 @@
     :loan="selectedLoan"
     :history="loanHistory"
     :loading="isLoadingHistory"
+    @select-loan="onHandlePay"
   />
 </template>
 
@@ -159,6 +200,7 @@ import BayarTagihan from "./BayarTagihan.vue";
 import PinjamanDetailModal from "./PinjamanDetailModal.vue";
 import Button from "@/components/ui/button/Button.vue";
 import Swal from "sweetalert2";
+import TooltipButton from "@/components/TooltipButton.vue";
 const props = defineProps({
   members: Array,
   modals: Object,
@@ -174,7 +216,9 @@ const isLoadingHistory = ref(false);
 const onImport = ref(false)
 const exporting = ref(false)
 const fileInput = ref(null);
+const fileAngsuranInput = ref(false)
 const searchQuery = ref('')
+const targetLoanId = ref(null)
 const pagination = ref({
   current_page: 1,
   last_page: 1,
@@ -186,17 +230,37 @@ const pagination = ref({
 function addLoans(newLoan)
 {
   fetchPinjaman()
+  Swal.fire({
+    icon: 'success',
+    toast: true,
+    timer: 2500,
+    timerProgressBar: true,
+    text: 'Pinjaman baru berhasil disimpan',
+    showConfirmButton: false
+  })
 }
 
 function bayarSuccess()
 {
   fetchPinjaman()
+  Swal.fire({
+    icon: 'success',
+    toast: true,
+    timer: 2500,
+    timerProgressBar: true,
+    text: 'Pembayaran berhasil disimpan',
+    showConfirmButton: false
+  })
+}
+
+function onHandlePay(value)
+{
+  targetLoanId.value = value
 }
 
 const openDetail = async (loan) => {
   // 1. Simpan data baris yang diklik ke state lokal
   selectedLoan.value = loan;
-  console.log(loan)
   
   // 2. Buka modal (Pastikan props.modals.loanDetail sudah didefinisikan di Parent utama)
   props.modals.loanDetail = true;
@@ -284,6 +348,26 @@ const importPinjamanConfirmation = async () => {
     }
 };
 
+const importAngsuranConfirmation = async () => {
+    if (onImport.value) return;
+
+    const result = await Swal.fire({
+        title: 'Konfirmasi Import',
+        text: "Pilih file .xlsx untuk mengimpor data angsuran.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Pilih File',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#16a34a', // Green-600
+        borderRadius: '1.5rem'
+    });
+
+    if (result.isConfirmed) {
+        // Memicu jendela file browser muncul
+        fileAngsuranInput.value.click();
+    }
+};
+
 const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -303,6 +387,47 @@ const handleFileChange = async (event) => {
         });
 
         const response = await api.post('/pinjaman/import', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        Swal.fire({
+            title: 'Sukses!',
+            text: response.data.message || 'Data berhasil diimpor.',
+            icon: 'success',
+            borderRadius: '1.5rem'
+        });
+    } catch (error) {
+        Swal.fire({
+            title: 'Gagal',
+            text: error.response?.data?.message || 'Terjadi kesalahan saat mengunggah.',
+            icon: 'error'
+        });
+    } finally {
+        onImport.value = false;
+        // Penting: Reset input agar file yang sama bisa dipilih kembali jika perlu
+        event.target.value = '';
+    }
+};
+
+const handleFileAngsuranChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Mulai proses upload
+    onImport.value = true;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        Swal.fire({
+            title: 'Sedang Mengunggah',
+            text: 'Harap tunggu...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const response = await api.post('/pinjaman/angsuran/import', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
 

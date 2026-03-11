@@ -53,8 +53,11 @@ const props = defineProps({
   loading: Boolean
 });
 
+const emit = defineEmits(['selectLoan']);
+
 const handlePay = () => {
   props.modals.loanDetail = false;
   props.modals.installment = true;
+  emit('selectLoan', props.loan.no_kontrak)
 };
 </script>

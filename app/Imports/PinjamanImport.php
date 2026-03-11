@@ -46,7 +46,8 @@ class PinjamanImport implements ToModel, WithHeadingRow
             'tanggal_cair'   => $tanggal_cair,
             'nominal_realisasi' => $this->cleanNumber($row['realisasi']),
             'tenor'          => $row['tenor'],
-            'total_bunga'    => $this->cleanNumber($row['realisasi']) * ($row['tenor'] * 0.01),
+            // 'total_bunga'    => $this->cleanNumber($row['realisasi']) * ($row['tenor'] * 0.01),
+            'total_bunga'    => $this->cleanNumber($row['realisasi']) * 0.01,
             'total_tagihan'  => $this->cleanNumber($row['realisasi']) + ( $this->cleanNumber($row['realisasi']) * ($row['tenor'] * 0.01)),
             'angsuran_per_bulan' => $this->cleanNumber($row['angsur']),
             'jatuh_tempo'    => $jatuh_tempo,
@@ -68,28 +69,28 @@ class PinjamanImport implements ToModel, WithHeadingRow
             'keterangan'        => "Pencairan pinjaman (Import Data)"
         ]);
 
-        if ($row['angsurke'] > 0) {
-            foreach (range(1, $row['angsurke']) as $ke) {
-                $nominalPerBulan = $this->cleanNumber($row['angsur']);
-                $uniqueCode = TransaksiEnum::ANGSURAN->prefix() . 
-                            now()->format('YmdHisv') .
-                            $ke . 
-                            ($idAnggota->id ?? '0') .
-                            uniqid();
+        // if ($row['angsurke'] > 0) {
+        //     foreach (range(1, $row['angsurke']) as $ke) {
+        //         $nominalPerBulan = $this->cleanNumber($row['angsur']);
+        //         $uniqueCode = TransaksiEnum::ANGSURAN->prefix() . 
+        //                     now()->format('YmdHisv') .
+        //                     $ke . 
+        //                     ($idAnggota->id ?? '0') .
+        //                     uniqid();
 
-                Transaksi::create([
-                    'anggota_id'        => $idAnggota->id ?? -1,
-                    'pinjaman_id'       => $pinjaman->id, 
-                    'kode_transaksi'    => $uniqueCode,
-                    'tanggal_transaksi' => $tanggal_cair, // Bisa disesuaikan
-                    'jenis_transaksi'   => TransaksiEnum::ANGSURAN->value,
-                    'debit'             => $totalBayar, 
-                    'kredit'            => 0,
-                    'keterangan'        => "Pembayaran Angsuran ke-{$ke} (Import Data)",
-                    'angsuran_id'       => $angsuranid
-                ]);
-            }
-        }
+        //         Transaksi::create([
+        //             'anggota_id'        => $idAnggota->id ?? -1,
+        //             'pinjaman_id'       => $pinjaman->id, 
+        //             'kode_transaksi'    => $uniqueCode,
+        //             'tanggal_transaksi' => $tanggal_cair, // Bisa disesuaikan
+        //             'jenis_transaksi'   => TransaksiEnum::ANGSURAN->value,
+        //             'debit'             => $totalBayar, 
+        //             'kredit'            => 0,
+        //             'keterangan'        => "Pembayaran Angsuran ke-{$ke} (Import Data)",
+        //             'angsuran_id'       => $angsuranid
+        //         ]);
+        //     }
+        // }
 
         return $pinjaman;
     }

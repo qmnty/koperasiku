@@ -23,7 +23,8 @@ class TransaksiController extends Controller
                     'transaksis.kredit',
                     'transaksis.debit',
                     'transaksis.keterangan as notes',
-                    'transaksis.created_at'
+                    'transaksis.tanggal_transaksi',
+                    DB::raw('LOWER(transaksis.payment_method) as payment_method')
                 );
 
             if ($request->filled('search')) {
@@ -31,10 +32,10 @@ class TransaksiController extends Controller
             }
 
             if ($request->filled('start_date')) {
-                $query->whereDate('transaksis.created_at', '>=', $request->start_date);
+                $query->whereDate('transaksis.tanggal_transaksi', '>=', $request->start_date);
             }
             if ($request->filled('end_date')) {
-                $query->whereDate('transaksis.created_at', '<=', $request->end_date);
+                $query->whereDate('transaksis.tanggal_transaksi', '<=', $request->end_date);
             }
 
             if ($request->filled('kategori')) {
@@ -57,7 +58,7 @@ class TransaksiController extends Controller
                 $query->where('anggotas.pj', $request->kelompok);
             }
 
-            $paginatedData = $query->orderBy('transaksis.created_at', 'desc')
+            $paginatedData = $query->orderBy('transaksis.tanggal_transaksi', 'desc')
                 ->paginate($request->query('per_page', 15));
 
             $paginatedData->setCollection($paginatedData->getCollection()->map(function($t) {
@@ -69,8 +70,9 @@ class TransaksiController extends Controller
                     'tipe' => $t->tipe,
                     'is_keluar' => $isKeluar,
                     'nominal' => $isKeluar ? $t->kredit : $t->debit,
-                    'tanggal' => date('d M Y, H:i', strtotime($t->created_at)),
-                    'notes' => $t->notes
+                    'tanggal' => date('d M Y, H:i', strtotime($t->tanggal_transaksi)),
+                    'notes' => $t->notes,
+                    'payment_method' => $t->payment_method
                 ];
             }));
 
