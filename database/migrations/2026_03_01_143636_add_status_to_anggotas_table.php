@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::table('anggotas', function (Blueprint $table) {
             // Menambahkan kolom status, default 'aktif'
             // after('nama') agar posisi kolom rapi di database (opsional)
-            $table->string('status', 20)->default('aktif')->after('nama');
+            $table->string('status', 20)->default('aktif');
             
             // Tambahkan index agar pencarian status (filter) lebih cepat
             $table->index('status');

